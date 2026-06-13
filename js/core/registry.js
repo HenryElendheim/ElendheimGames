@@ -52,7 +52,7 @@ export const GAMES = [
     scoreType: "wins",
     difficulty: null,
     modes: null,
-    loader: null,
+    loader: () => import("../games/wordle.js"),
   },
   {
     id: "connect4",
@@ -96,7 +96,7 @@ export const GAMES = [
     scoreType: "wins",
     difficulty: null,
     modes: null,
-    loader: null,
+    loader: () => import("../games/blackjack.js"),
   },
   {
     id: "chess",
