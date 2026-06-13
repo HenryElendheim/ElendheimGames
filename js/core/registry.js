@@ -107,7 +107,7 @@ export const GAMES = [
     scoreType: "wins",
     difficulty: ["EASY", "MEDIUM", "HARD"],
     modes: ["cpu", "local"],
-    loader: null,
+    loader: () => import("../games/chess.js"),
   },
   {
     id: "tetris",

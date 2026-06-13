@@ -17,17 +17,17 @@ python3 -m http.server 8099
 
 | Game | Tracks | Status |
 |------|--------|--------|
-| 🍉 Fruit Slasher | High score (3 lives) | planned |
-| 🕷️ Spiderette | Wins + streak | planned |
-| 🎹 Tile Tap | High score | planned |
-| 🟩 Word Quest | Wins + streak | planned |
-| 🔴 Connect 4 | Wins (cpu / 2-player) | planned |
-| ❌ Tic-Tac-Toe | Wins (cpu / 2-player) | **playable** |
-| 🔨 Whack-a-Mole | High score | planned |
-| 🃏 Blackjack | Wins / chips | planned |
-| ♟️ Chess | Wins (cpu / 2-player) | planned |
-| 🧱 Tetris | High score | planned |
-| 💥 Block Blast | High score | planned |
+| 🍉 Fruit Slasher | High score (3 lives) | ✅ playable |
+| 🕷️ Spiderette | Wins + streak | ✅ playable |
+| 🎹 Tile Tap | High score | ✅ playable |
+| 🟩 Word Quest | Wins + streak | ✅ playable |
+| 🔴 Connect 4 | Wins (cpu / 2-player) | ✅ playable |
+| ❌ Tic-Tac-Toe | Wins (cpu / 2-player) | ✅ playable |
+| 🔨 Whack-a-Mole | High score | ✅ playable |
+| 🃏 Blackjack | Wins / chips | ✅ playable |
+| ♟️ Chess | Wins (cpu / 2-player) | ✅ playable |
+| 🧱 Tetris | High score | ✅ playable |
+| 💥 Block Blast | High score | ✅ playable |
 
 ## How it's wired
 
