@@ -19,7 +19,7 @@ export const GAMES = [
     difficulty: null,
     modes: null,
     isNew: true,
-    loader: null,
+    loader: () => import("../games/fruit-slasher.js"),
   },
   {
     id: "spiderette",
@@ -30,7 +30,7 @@ export const GAMES = [
     scoreType: "wins",
     difficulty: ["EASY", "MEDIUM", "HARD"],
     modes: null,
-    loader: null,
+    loader: () => import("../games/spiderette.js"),
   },
   {
     id: "tile-tap",
