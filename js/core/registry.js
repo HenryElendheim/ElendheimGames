@@ -1,0 +1,137 @@
+/* ============================================================
+   Game registry — the single source of truth for the catalog.
+   To add a game: drop a module in js/games/ and add an entry here.
+
+   scoreType:  "highscore" | "wins" | "besttime"
+   difficulty: array of labels (slider stops) or null for none
+   modes:      ["cpu","local"] for strategy games, or null
+   loader:     () => dynamic import of the game module (null = coming soon)
+   ============================================================ */
+
+export const GAMES = [
+  {
+    id: "fruit-slasher",
+    title: "Fruit Slasher",
+    emoji: "🍉",
+    accent: "#ef5350",
+    desc: "Swipe to slice the fruit — but don't let three slip past you, and never hit a bomb!",
+    scoreType: "highscore",
+    difficulty: null,
+    modes: null,
+    isNew: true,
+    loader: null,
+  },
+  {
+    id: "spiderette",
+    title: "Spiderette",
+    emoji: "🕷️",
+    accent: "#8b5cf6",
+    desc: "Like Spider Solitaire, but with just one deck for quicker games!",
+    scoreType: "wins",
+    difficulty: ["EASY", "MEDIUM", "HARD"],
+    modes: null,
+    loader: null,
+  },
+  {
+    id: "tile-tap",
+    title: "Tile Tap",
+    emoji: "🎹",
+    accent: "#18c29c",
+    desc: "Tap only the dark tiles as they fall. One wrong tap and it's over!",
+    scoreType: "highscore",
+    difficulty: ["EASY", "MEDIUM", "HARD"],
+    modes: null,
+    loader: null,
+  },
+  {
+    id: "wordle",
+    title: "Word Quest",
+    emoji: "🟩",
+    accent: "#6aaa64",
+    desc: "Six guesses to find the hidden five-letter word. Keep your streak alive!",
+    scoreType: "wins",
+    difficulty: null,
+    modes: null,
+    loader: null,
+  },
+  {
+    id: "connect4",
+    title: "Connect 4",
+    emoji: "🔴",
+    accent: "#ffb400",
+    desc: "Drop your discs and line up four in a row before your opponent does.",
+    scoreType: "wins",
+    difficulty: ["EASY", "MEDIUM", "HARD"],
+    modes: ["cpu", "local"],
+    loader: null,
+  },
+  {
+    id: "tictactoe",
+    title: "Tic-Tac-Toe",
+    emoji: "❌",
+    accent: "#4fc3f7",
+    desc: "The classic. Get three in a row against the computer or a friend.",
+    scoreType: "wins",
+    difficulty: ["EASY", "MEDIUM", "HARD"],
+    modes: ["cpu", "local"],
+    loader: () => import("../games/tictactoe.js"),
+  },
+  {
+    id: "whack-a-mole",
+    title: "Whack-a-Mole",
+    emoji: "🔨",
+    accent: "#e8821e",
+    desc: "Bop as many moles as you can before the timer runs out!",
+    scoreType: "highscore",
+    difficulty: ["EASY", "MEDIUM", "HARD"],
+    modes: null,
+    loader: null,
+  },
+  {
+    id: "blackjack",
+    title: "Blackjack",
+    emoji: "🃏",
+    accent: "#2e9e57",
+    desc: "Beat the dealer to 21 without going bust. Build your chip streak!",
+    scoreType: "wins",
+    difficulty: null,
+    modes: null,
+    loader: null,
+  },
+  {
+    id: "chess",
+    title: "Chess",
+    emoji: "♟️",
+    accent: "#c0c4cc",
+    desc: "Full rules, full board. Outplay the engine or challenge a friend.",
+    scoreType: "wins",
+    difficulty: ["EASY", "MEDIUM", "HARD"],
+    modes: ["cpu", "local"],
+    loader: null,
+  },
+  {
+    id: "tetris",
+    title: "Tetris",
+    emoji: "🧱",
+    accent: "#7c4dff",
+    desc: "Stack the falling blocks, clear full lines, and chase the high score.",
+    scoreType: "highscore",
+    difficulty: null,
+    modes: null,
+    loader: null,
+  },
+  {
+    id: "block-blast",
+    title: "Block Blast",
+    emoji: "💥",
+    accent: "#ff4081",
+    desc: "Drag blocks onto the grid and clear rows and columns to score big.",
+    scoreType: "highscore",
+    difficulty: null,
+    modes: null,
+    loader: null,
+  },
+];
+
+export const getGame = (id) => GAMES.find((g) => g.id === id);
+export const GAME_IDS = GAMES.map((g) => g.id);
