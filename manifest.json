@@ -1,0 +1,14 @@
+{
+  "name": "Elendheim Games",
+  "short_name": "Elendheim",
+  "description": "A library of quick games to play on your phone.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#15161a",
+  "theme_color": "#15161a",
+  "icons": [
+    { "src": "assets/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
