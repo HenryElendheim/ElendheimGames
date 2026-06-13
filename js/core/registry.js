@@ -63,7 +63,7 @@ export const GAMES = [
     scoreType: "wins",
     difficulty: ["EASY", "MEDIUM", "HARD"],
     modes: ["cpu", "local"],
-    loader: null,
+    loader: () => import("../games/connect4.js"),
   },
   {
     id: "tictactoe",
@@ -85,7 +85,7 @@ export const GAMES = [
     scoreType: "highscore",
     difficulty: ["EASY", "MEDIUM", "HARD"],
     modes: null,
-    loader: null,
+    loader: () => import("../games/whack-a-mole.js"),
   },
   {
     id: "blackjack",
@@ -118,7 +118,7 @@ export const GAMES = [
     scoreType: "highscore",
     difficulty: null,
     modes: null,
-    loader: null,
+    loader: () => import("../games/tetris.js"),
   },
   {
     id: "block-blast",
