@@ -41,7 +41,7 @@ export const GAMES = [
     scoreType: "highscore",
     difficulty: ["EASY", "MEDIUM", "HARD"],
     modes: null,
-    loader: null,
+    loader: () => import("../games/tile-tap.js"),
   },
   {
     id: "wordle",
@@ -129,7 +129,7 @@ export const GAMES = [
     scoreType: "highscore",
     difficulty: null,
     modes: null,
-    loader: null,
+    loader: () => import("../games/block-blast.js"),
   },
 ];
 
