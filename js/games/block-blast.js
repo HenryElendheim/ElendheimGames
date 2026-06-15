@@ -36,15 +36,19 @@ const dims = (cells) => ({
 });
 
 const STYLE = `
-.bb-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:18px; padding:14px; }
+.bb-wrap { flex:1; position:relative; display:flex; flex-direction:column; align-items:center; gap:18px; padding:14px; }
 .bb-board { display:grid; grid-template-columns:repeat(${N},1fr); width:min(94vw,400px); aspect-ratio:1;
   background:#0e0f14; border-radius:12px; overflow:hidden; box-shadow:var(--shadow); touch-action:none; }
 .bb-cell { aspect-ratio:1; box-shadow:inset 0 0 0 1px rgba(255,255,255,.04); background:#181a20; }
 .bb-cell.filled { box-shadow:inset 0 0 0 1px rgba(0,0,0,.25); }
 .bb-cell.ok { background:rgba(255,255,255,.18) !important; }
 .bb-cell.bad { background:rgba(239,83,80,.35) !important; }
-.bb-cell.clear { animation:bb-flash .3s ease; }
-@keyframes bb-flash { 0%{filter:brightness(2.4);} 100%{filter:none;} }
+.bb-cell.clear { animation:bb-clear .34s ease forwards; z-index:2; }
+@keyframes bb-clear { 0%{transform:scale(1);filter:brightness(1);} 40%{transform:scale(1.2);filter:brightness(2.4);} 100%{transform:scale(0);opacity:0;filter:brightness(2.4);} }
+.bb-pop { position:absolute; left:50%; top:42%; transform:translate(-50%,-50%); text-align:center; pointer-events:none; z-index:20; animation:bb-pop-rise 1s ease forwards; }
+.bb-pop .pts { font-size:36px; font-weight:800; color:var(--accent); text-shadow:0 3px 12px rgba(0,0,0,.7); }
+.bb-pop .lbl { font-size:14px; font-weight:800; color:#fff; letter-spacing:.06em; text-shadow:0 2px 6px rgba(0,0,0,.7); }
+@keyframes bb-pop-rise { 0%{opacity:0;transform:translate(-50%,-30%) scale(.7);} 18%{opacity:1;transform:translate(-50%,-50%) scale(1.12);} 78%{opacity:1;} 100%{opacity:0;transform:translate(-50%,-120%) scale(1);} }
 .bb-tray { display:flex; justify-content:space-around; align-items:center; gap:10px; width:min(94vw,400px); min-height:90px; }
 .bb-piece { display:grid; gap:3px; touch-action:none; transition:opacity .15s, transform .1s; }
 .bb-piece.used { opacity:0; pointer-events:none; }
@@ -58,7 +62,7 @@ export default function init(api) {
   style.textContent = STYLE;
   document.head.append(style);
 
-  let grid, score, tray, over, drag;
+  let grid, score, tray, over, drag, combo, clearing;
 
   const boardEl = document.createElement("div");
   boardEl.className = "bb-board";
@@ -128,7 +132,7 @@ export default function init(api) {
   }
 
   function startDrag(e, idx) {
-    if (over || tray[idx].used) return;
+    if (over || clearing || tray[idx].used) return;
     e.preventDefault();
     const piece = tray[idx];
     const cell = cellPx();
@@ -213,30 +217,60 @@ export default function init(api) {
     }
     tray[idx].used = true;
     score += placed;
-    clearLines();
-    render();
+    render(); // show the placed piece first
+
+    const { cells: cleared, lines } = findClears();
+    if (!cleared.length) {
+      combo = 0;
+      finishPlacement();
+      return;
+    }
+
+    // points: 10 per line, +5 per extra simultaneous line, +5 per combo step
+    combo++;
+    const gained = lines * 10 + (lines > 1 ? lines * 5 : 0) + (combo > 1 ? combo * 5 : 0);
+    score += gained;
+    pills();
+    showClearPopup(gained, lines, combo);
+
+    clearing = true;
+    cleared.forEach((i, k) => {
+      cellEls[i].style.animationDelay = (k % N) * 18 + "ms";
+      cellEls[i].classList.add("clear");
+    });
+    setTimeout(() => {
+      cleared.forEach((i) => (grid[(i / N) | 0][i % N] = ""));
+      render();
+      clearing = false;
+      finishPlacement();
+    }, 340);
+  }
+
+  function finishPlacement() {
     if (tray.every((p) => p.used)) newTray();
     else renderTray();
     pills();
     if (!anyMove()) gameOver();
   }
 
-  function clearLines() {
+  function findClears() {
     const fullRows = [],
       fullCols = [];
     for (let r = 0; r < N; r++) if (grid[r].every(Boolean)) fullRows.push(r);
     for (let c = 0; c < N; c++) if (grid.every((row) => row[c])) fullCols.push(c);
-    const toClear = new Set();
-    fullRows.forEach((r) => { for (let c = 0; c < N; c++) toClear.add(r * N + c); });
-    fullCols.forEach((c) => { for (let r = 0; r < N; r++) toClear.add(r * N + c); });
-    if (!toClear.size) return;
-    const lines = fullRows.length + fullCols.length;
-    score += lines * 10 + (lines > 1 ? lines * 5 : 0); // combo bonus
-    toClear.forEach((i) => {
-      grid[(i / N) | 0][i % N] = "";
-      cellEls[i].classList.add("clear");
-      setTimeout(() => cellEls[i].classList.remove("clear"), 300);
-    });
+    const set = new Set();
+    fullRows.forEach((r) => { for (let c = 0; c < N; c++) set.add(r * N + c); });
+    fullCols.forEach((c) => { for (let r = 0; r < N; r++) set.add(r * N + c); });
+    return { cells: [...set], lines: fullRows.length + fullCols.length };
+  }
+
+  function showClearPopup(points, lines, comboCount) {
+    const pop = document.createElement("div");
+    pop.className = "bb-pop";
+    const label = comboCount > 1 ? `COMBO x${comboCount}` : `${lines} LINE${lines > 1 ? "S" : ""}`;
+    pop.innerHTML = `<div class="pts">+${points}</div><div class="lbl">${label}</div>`;
+    wrap.append(pop);
+    setTimeout(() => pop.remove(), 1000);
   }
 
   function anyMove() {
@@ -253,6 +287,8 @@ export default function init(api) {
     grid = Array.from({ length: N }, () => Array(N).fill(""));
     score = 0;
     over = false;
+    combo = 0;
+    clearing = false;
     if (drag) { drag.ghost.remove(); drag = null; }
     render();
     newTray();

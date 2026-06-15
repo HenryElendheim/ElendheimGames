@@ -1,7 +1,7 @@
 /* Service worker — cache-first shell so the library works offline.
    Bump CACHE when you ship changes so clients pick them up. */
 
-const CACHE = "elendheim-games-v19";
+const CACHE = "elendheim-games-v20";
 const ASSETS = [
   "./",
   "index.html",
