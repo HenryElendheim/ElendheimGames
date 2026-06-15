@@ -4,7 +4,7 @@
 
 import { el, glow } from "./dom.js";
 import { Storage } from "./storage.js";
-import { GAMES, GAME_IDS, getGame } from "./registry.js";
+import { GAMES, GAME_IDS, getGame, isNew, homeOrder } from "./registry.js";
 import { gameIcon, uiIcon } from "./icons.js";
 import { fetchLeaderboard } from "./cloud.js";
 
@@ -31,7 +31,7 @@ export function renderHome(go) {
   const grid = el(
     "div",
     { class: "grid" },
-    ...GAMES.map((game) => {
+    ...homeOrder(GAMES).map((game) => {
       const stat = tileStatText(game);
       return el(
         "button",
@@ -40,7 +40,7 @@ export function renderHome(go) {
           style: { color: game.accent, "--tile-glow": glow(game.accent, 0.45) },
           onClick: () => go(`#/game/${game.id}`),
         },
-        game.isNew && el("div", { class: "badge-new" }, "NEW!"),
+        isNew(game) && el("div", { class: "badge-new" }, "NEW!"),
         el("div", { class: "tile-title" }, game.title),
         el("div", { class: "tile-art" }, gameIcon(game.id)),
         stat && el("div", { class: "tile-stat" }, stat)

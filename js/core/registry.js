@@ -17,7 +17,7 @@ export const GAMES = [
     scoreType: "highscore",
     difficulty: null,
     modes: null,
-    isNew: true,
+    since: "2026-06-15",
     loader: () => import("../games/fruit-slasher.js"),
   },
   {
@@ -38,7 +38,7 @@ export const GAMES = [
     scoreType: "wins",
     difficulty: null,
     modes: null,
-    isNew: true,
+    since: "2026-06-15",
     loader: () => import("../games/kings-corners.js"),
   },
   {
@@ -142,6 +142,20 @@ export const GAMES = [
     loader: () => import("../games/block-blast.js"),
   },
 ];
+
+/* A game shows its NEW badge for 30 days after its `since` date. */
+const NEW_DAYS = 30;
+export const isNew = (g) => g.since != null && Date.now() - Date.parse(g.since) < NEW_DAYS * 86400000;
+
+/* Home ordering: NEW games first (freshest first), then the rest A–Z. */
+export const homeOrder = (games) =>
+  [...games].sort((a, b) => {
+    const na = isNew(a),
+      nb = isNew(b);
+    if (na !== nb) return na ? -1 : 1;
+    if (na && nb) return Date.parse(b.since) - Date.parse(a.since) || a.title.localeCompare(b.title);
+    return a.title.localeCompare(b.title);
+  });
 
 export const getGame = (id) => GAMES.find((g) => g.id === id);
 export const GAME_IDS = GAMES.map((g) => g.id);
