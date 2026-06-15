@@ -6,6 +6,9 @@
    difficulty: array of labels (slider stops) or null for none
    modes:      ["cpu","local"] for strategy games, or null
    loader:     () => dynamic import of the game module (null = coming soon)
+   image:      OPTIONAL path to artwork (PNG/JPG/SVG/WebP). When set, the tile
+               and hero show this picture instead of the drawn glyph — drop the
+               file in (e.g. assets/games/<id>.png) and add this one line.
    ============================================================ */
 
 export const GAMES = [

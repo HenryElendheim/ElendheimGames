@@ -42,7 +42,7 @@ export function renderHome(go) {
         },
         isNew(game) && el("div", { class: "badge-new" }, "NEW!"),
         el("div", { class: "tile-title" }, game.title),
-        el("div", { class: "tile-art" }, gameIcon(game.id)),
+        el("div", { class: "tile-art" }, gameIcon(game.id, game.image)),
         stat && el("div", { class: "tile-stat" }, stat)
       );
     })
@@ -71,7 +71,7 @@ export function renderDetail(id, go) {
   const hero = el(
     "div",
     { class: "detail-hero", style: { "--hero-glow": glow(game.accent, 0.4) } },
-    el("div", { class: "hero-emoji" }, gameIcon(game.id)),
+    el("div", { class: "hero-emoji" }, gameIcon(game.id, game.image)),
     el(
       "div",
       { class: "detail-top" },

@@ -86,7 +86,7 @@ function renderComingSoon(api, game, errored = false) {
   const inner = document.createElement("div");
   const iconWrap = document.createElement("div");
   iconWrap.className = "ph-emoji";
-  iconWrap.append(gameIcon(game.id));
+  iconWrap.append(gameIcon(game.id, game.image));
   inner.append(iconWrap);
   inner.insertAdjacentHTML(
     "beforeend",

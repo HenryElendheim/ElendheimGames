@@ -115,7 +115,18 @@ const UI = {
      <circle cx="50" cy="50" r="6" fill="currentColor"/>`,
 };
 
-export function gameIcon(id) {
+/* gameIcon(id, image)
+   If a game provides an `image` (a path/URL to a PNG/JPG/SVG/WebP), render it
+   as an <img> so finished art can be dropped in with no other changes. With no
+   image, fall back to the drawn SVG glyph for that game. */
+export function gameIcon(id, image) {
+  if (image) {
+    const img = document.createElement("img");
+    img.src = image;
+    img.alt = "";
+    img.className = "game-art-img";
+    return img;
+  }
   return make(GAME[id] || `<circle cx="50" cy="50" r="30" fill="currentColor"/>`);
 }
 
