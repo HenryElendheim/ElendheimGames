@@ -141,9 +141,20 @@ export default function init(api) {
     combo++;
     pills();
     popup(f.x, f.y, "+1", "#fff");
-    // juice: two halves flying apart
+    // the whole fruit is replaced by two halves flying apart, so you
+    // can clearly see which fruit you cut
     for (const dir of [-1, 1])
-      particles.push({ x: f.x, y: f.y, vx: dir * 160 + f.vx * 0.4, vy: f.vy * 0.4 - 60, color: f.color, half: dir, rot: f.rot, spin: dir * 6, life: 1 });
+      particles.push({
+        x: f.x,
+        y: f.y,
+        vx: dir * 220 + f.vx * 0.3,
+        vy: f.vy * 0.5 - 70,
+        color: f.color,
+        half: dir,
+        rot: f.rot,
+        spin: dir * 7,
+        life: 1,
+      });
   }
 
   function popup(x, y, text, color) {
@@ -157,13 +168,20 @@ export default function init(api) {
     }
     for (let i = fruits.length - 1; i >= 0; i--) {
       const f = fruits[i];
+      // a sliced fruit/bomb is removed at once — replaced by its halves
+      // (fruit) or its boom (bomb); this also means a bomb is only ever
+      // hit a single time
+      if (f.sliced) {
+        fruits.splice(i, 1);
+        continue;
+      }
       f.vy += GRAVITY * dt;
       f.x += f.vx * dt;
       f.y += f.vy * dt;
       f.rot += f.spin * dt;
       if (f.y - f.r > H + 60) {
         fruits.splice(i, 1);
-        if (!f.sliced && !f.bomb && running) loseLife();
+        if (!f.bomb && running) loseLife();
       }
     }
     for (let i = particles.length - 1; i >= 0; i--) {
@@ -305,10 +323,23 @@ function drawFruit(ctx, r, color) {
 }
 
 function drawBomb(ctx, r) {
+  // outer red glow ring so a bomb is unmistakable
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = "rgba(255,45,45,.35)";
+  ctx.beginPath();
+  ctx.arc(0, 0, r + 4, 0, Math.PI * 2);
+  ctx.stroke();
+  // black body
   ctx.fillStyle = "#1c1c22";
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.fill();
+  // bright red outline
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = "#ff2d2d";
+  ctx.beginPath();
+  ctx.arc(0, 0, r - 2, 0, Math.PI * 2);
+  ctx.stroke();
   ctx.fillStyle = "rgba(255,255,255,.22)";
   ctx.beginPath();
   ctx.arc(-r * 0.35, -r * 0.35, r * 0.22, 0, Math.PI * 2);
