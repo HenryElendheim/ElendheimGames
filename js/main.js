@@ -9,6 +9,7 @@ import { mount } from "./core/dom.js";
 import { renderHome, renderDetail } from "./core/screens.js";
 import { createGameShell } from "./core/shell.js";
 import { getGame } from "./core/registry.js";
+import { gameIcon } from "./core/icons.js";
 
 const app = document.getElementById("app");
 let activeGame = null; // { destroy } for the currently-running game
@@ -81,9 +82,18 @@ function renderComingSoon(api, game, errored = false) {
   });
   const ph = document.createElement("div");
   ph.className = "placeholder";
-  ph.innerHTML = `<div><div class="ph-emoji">${game.emoji}</div><b>${game.title}</b><br/>${
-    errored ? "Something went wrong loading this game." : "Coming soon — this one's still in the workshop!"
-  }</div>`;
+  const inner = document.createElement("div");
+  const iconWrap = document.createElement("div");
+  iconWrap.className = "ph-emoji";
+  iconWrap.append(gameIcon(game.id));
+  inner.append(iconWrap);
+  inner.insertAdjacentHTML(
+    "beforeend",
+    `<b>${game.title}</b><br/>${
+      errored ? "Something went wrong loading this game." : "Coming soon — this one's still in the workshop!"
+    }`
+  );
+  ph.append(inner);
   api.root.append(ph);
 }
 

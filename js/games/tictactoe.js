@@ -126,7 +126,7 @@ export default function init(api) {
       if (isCpu) {
         if (result.winner === "X") {
           api.reportWin();
-          title = "You win! 🎉";
+          title = "You win!";
         } else {
           api.reportLoss();
           title = "Computer wins";
@@ -134,7 +134,7 @@ export default function init(api) {
         message = null;
       } else {
         session[result.winner]++;
-        title = `Player ${result.winner} wins! 🎉`;
+        title = `Player ${result.winner} wins!`;
       }
     } else {
       title = "It's a draw";

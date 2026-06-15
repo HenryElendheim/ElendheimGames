@@ -5,16 +5,25 @@
    Tracks: high score (3 lives).
    ============================================================ */
 
-const FRUITS = ["🍉", "🍎", "🍊", "🍋", "🍓", "🥝", "🍑", "🍍"];
+const FRUITS = [
+  { body: "#e23b2e", shine: "#ff8174" },
+  { body: "#f5a623", shine: "#ffce7a" },
+  { body: "#f1c40f", shine: "#fce98a" },
+  { body: "#2ecc71", shine: "#8ef0b6" },
+  { body: "#9b59b6", shine: "#d2a8e6" },
+  { body: "#e84393", shine: "#ffa6cf" },
+  { body: "#1abc9c", shine: "#7ff0db" },
+  { body: "#3498db", shine: "#9fd4f5" },
+];
 const GRAVITY = 1300;
 
 const STYLE = `
 .fs-wrap { flex:1; position:relative; overflow:hidden; }
 .fs-canvas { display:block; width:100%; height:100%; touch-action:none; cursor:crosshair; }
-.fs-lives { position:absolute; top:10px; right:14px; font-size:22px; letter-spacing:2px; pointer-events:none;
-  text-shadow:0 2px 4px rgba(0,0,0,.6); }
-.fs-go { position:absolute; inset:0; display:grid; place-items:center; text-align:center; pointer-events:none; }
-.fs-go .big { font-size:26px; font-weight:800; }
+.fs-lives { position:absolute; top:12px; right:14px; display:flex; gap:7px; pointer-events:none; }
+.fs-life { width:18px; height:18px; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,.5); }
+.fs-life.full { background:radial-gradient(circle at 35% 30%, #ff8a80, #e23b2e); }
+.fs-life.empty { background:rgba(255,255,255,.14); box-shadow:inset 0 0 0 2px rgba(255,255,255,.25); }
 `;
 
 export default function init(api) {
@@ -54,7 +63,12 @@ export default function init(api) {
     api.setStats({ left: { label: "Score", value: score }, right: { label: "Best", value: api.refreshStats().highscore } });
   }
   function drawLives() {
-    livesEl.textContent = "❤️".repeat(lives) + "🖤".repeat(Math.max(0, 3 - lives));
+    livesEl.replaceChildren();
+    for (let i = 0; i < 3; i++) {
+      const pip = document.createElement("div");
+      pip.className = "fs-life " + (i < lives ? "full" : "empty");
+      livesEl.append(pip);
+    }
   }
 
   function spawn() {
@@ -68,7 +82,7 @@ export default function init(api) {
         vx: (Math.random() - 0.5) * 280,
         vy: -(Math.sqrt(2 * GRAVITY * (H * (0.55 + Math.random() * 0.4)))),
         r: 26,
-        emoji: isBomb ? "💣" : FRUITS[(Math.random() * FRUITS.length) | 0],
+        color: isBomb ? null : FRUITS[(Math.random() * FRUITS.length) | 0],
         bomb: isBomb,
         sliced: false,
         rot: Math.random() * Math.PI,
@@ -119,7 +133,7 @@ export default function init(api) {
   function slice(f) {
     f.sliced = true;
     if (f.bomb) {
-      popup(f.x, f.y, "💥", "#ef5350");
+      popup(f.x, f.y, "BOOM", "#ef5350");
       loseLife(true);
       return;
     }
@@ -129,7 +143,7 @@ export default function init(api) {
     popup(f.x, f.y, "+1", "#fff");
     // juice: two halves flying apart
     for (const dir of [-1, 1])
-      particles.push({ x: f.x, y: f.y, vx: dir * 160 + f.vx * 0.4, vy: f.vy * 0.4 - 60, emoji: f.emoji, rot: f.rot, spin: dir * 6, life: 1 });
+      particles.push({ x: f.x, y: f.y, vx: dir * 160 + f.vx * 0.4, vy: f.vy * 0.4 - 60, color: f.color, half: dir, rot: f.rot, spin: dir * 6, life: 1 });
   }
 
   function popup(x, y, text, color) {
@@ -183,8 +197,8 @@ export default function init(api) {
       ctx.save();
       ctx.translate(f.x, f.y);
       ctx.rotate(f.rot);
-      ctx.font = "48px serif";
-      ctx.fillText(f.emoji, 0, 0);
+      if (f.bomb) drawBomb(ctx, f.r);
+      else drawFruit(ctx, f.r, f.color);
       ctx.restore();
     }
     for (const p of particles) {
@@ -197,8 +211,7 @@ export default function init(api) {
         ctx.save();
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rot || 0);
-        ctx.font = "40px serif";
-        ctx.fillText(p.emoji, 0, 0);
+        drawHalf(ctx, 22, p.color, p.half);
         ctx.restore();
       }
       ctx.globalAlpha = 1;
@@ -243,7 +256,7 @@ export default function init(api) {
     const { isRecord } = api.reportHighscore(score);
     pills();
     api.showModal({
-      title: bomb ? "💥 Boom! Game Over" : isRecord ? "New best! 🏆" : "Game Over",
+      title: bomb ? "Boom! Game Over" : isRecord ? "New best!" : "Game Over",
       message: bomb ? "You sliced a bomb!" : "You ran out of lives.",
       statsRows: [
         { label: "Score", value: score },
@@ -274,4 +287,50 @@ function segCircle(a, b, c) {
   const px = a.x + t * dx,
     py = a.y + t * dy;
   return Math.hypot(c.x - px, c.y - py);
+}
+
+/* ---- drawn art (no emoji) ---- */
+function drawFruit(ctx, r, color) {
+  const g = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.2, 0, 0, r);
+  g.addColorStop(0, color.shine);
+  g.addColorStop(1, color.body);
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#5fae3a";
+  ctx.beginPath();
+  ctx.ellipse(r * 0.25, -r, r * 0.35, r * 0.18, -0.6, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawBomb(ctx, r) {
+  ctx.fillStyle = "#1c1c22";
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,255,255,.22)";
+  ctx.beginPath();
+  ctx.arc(-r * 0.35, -r * 0.35, r * 0.22, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#9a6a3c";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(0, -r);
+  ctx.quadraticCurveTo(r * 0.5, -r * 1.4, r * 0.7, -r * 1.05);
+  ctx.stroke();
+  ctx.fillStyle = "#ffb400";
+  ctx.beginPath();
+  ctx.arc(r * 0.7, -r * 1.05, 4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawHalf(ctx, r, color, dir) {
+  if (!color) return;
+  ctx.fillStyle = color.body;
+  ctx.beginPath();
+  const start = dir > 0 ? -Math.PI / 2 : Math.PI / 2;
+  ctx.arc(0, 0, r, start, start + Math.PI);
+  ctx.closePath();
+  ctx.fill();
 }

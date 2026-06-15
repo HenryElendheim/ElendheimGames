@@ -190,7 +190,7 @@ export default function init(api) {
     setTimeout(
       () =>
         api.showModal({
-          title: won ? "Solved! 🎉" : "Out of guesses",
+          title: won ? "Solved!" : "Out of guesses",
           message: won ? `In ${row + 1} ${row === 0 ? "guess" : "guesses"}!` : `The word was ${answer.toUpperCase()}`,
           statsRows: [
             { label: "Streak", value: api.refreshStats().streak },

@@ -41,8 +41,8 @@ export default function init(api) {
 
   api.onRestart(start);
   api.setFooter([
-    { icon: "🂠", label: "Hit", onClick: hit, accent: true },
-    { icon: "✋", label: "Stand", onClick: stand },
+    { icon: "+", label: "Hit", onClick: hit, accent: true },
+    { icon: "=", label: "Stand", onClick: stand },
   ]);
 
   function area(label) {
@@ -113,8 +113,8 @@ export default function init(api) {
 
   function setFooterEnabled(on) {
     api.setFooter([
-      { icon: "🂠", label: "Hit", onClick: hit, accent: true, disabled: !on },
-      { icon: "✋", label: "Stand", onClick: stand, disabled: !on },
+      { icon: "+", label: "Hit", onClick: hit, accent: true, disabled: !on },
+      { icon: "=", label: "Stand", onClick: stand, disabled: !on },
     ]);
   }
 
@@ -166,10 +166,10 @@ export default function init(api) {
       result = "Bust! Dealer wins";
       win = false;
     } else if (d > 21) {
-      result = "Dealer busts — you win! 🎉";
+      result = "Dealer busts — you win!";
       win = true;
     } else if (p > d) {
-      result = "You win! 🎉";
+      result = "You win!";
       win = true;
     } else if (p < d) {
       result = "Dealer wins";

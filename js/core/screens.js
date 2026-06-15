@@ -5,6 +5,7 @@
 import { el, glow } from "./dom.js";
 import { Storage } from "./storage.js";
 import { GAMES, GAME_IDS, getGame } from "./registry.js";
+import { gameIcon, uiIcon } from "./icons.js";
 
 /* Short summary line for a game's best result, shown on its tile. */
 function tileStatText(game) {
@@ -23,8 +24,8 @@ export function renderHome(go) {
     "div",
     { class: "home-top" },
     el("div", { class: "wordmark" }, el("span", {}, "Elendheim "), el("span", { class: "em" }, "Games")),
-    el("div", { class: "chip" }, el("span", { class: "chip-ico" }, "🏆"), String(g.totalWins)),
-    el("div", { class: "chip" }, el("span", { class: "chip-ico" }, "🎮"), String(g.totalPlays))
+    el("div", { class: "chip" }, el("span", { class: "chip-ico gold" }, uiIcon("trophy")), String(g.totalWins)),
+    el("div", { class: "chip" }, el("span", { class: "chip-ico" }, uiIcon("plays")), String(g.totalPlays))
   );
 
   const grid = el(
@@ -41,7 +42,7 @@ export function renderHome(go) {
         },
         game.isNew && el("div", { class: "badge-new" }, "NEW!"),
         el("div", { class: "tile-title" }, game.title),
-        el("div", { class: "tile-art" }, el("div", { class: "emoji" }, game.emoji)),
+        el("div", { class: "tile-art" }, gameIcon(game.id)),
         stat && el("div", { class: "tile-stat" }, stat)
       );
     })
@@ -70,7 +71,7 @@ export function renderDetail(id, go) {
   const hero = el(
     "div",
     { class: "detail-hero", style: { "--hero-glow": glow(game.accent, 0.4) } },
-    el("div", { class: "hero-emoji" }, game.emoji),
+    el("div", { class: "hero-emoji" }, gameIcon(game.id)),
     el(
       "div",
       { class: "detail-top" },
@@ -134,7 +135,7 @@ export function renderDetail(id, go) {
 
   // bottom action row
   const playBtn = el("button", { class: "btn-play", onClick: () => go(`#/play/${id}`) }, "PLAY");
-  const statsBtn = el("button", { class: "btn-square stats", onClick: () => showStats(game) }, "📊");
+  const statsBtn = el("button", { class: "btn-square stats", onClick: () => showStats(game) }, uiIcon("chart"));
   const helpBtn = el("button", { class: "btn-square help", onClick: () => showHelp(game) }, "?");
   body.append(el("div", { class: "detail-actions" }, statsBtn, playBtn, helpBtn));
 

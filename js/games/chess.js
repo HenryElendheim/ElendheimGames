@@ -199,7 +199,7 @@ export default function init(api) {
     let title, winner;
     if (inCheck(state, state.turn)) {
       winner = state.turn === "w" ? "b" : "w"; // side to move is checkmated
-      title = (winner === "w" ? "White" : "Black") + " wins by checkmate! 🎉";
+      title = (winner === "w" ? "White" : "Black") + " wins by checkmate!";
     } else {
       winner = null;
       title = "Stalemate — draw";

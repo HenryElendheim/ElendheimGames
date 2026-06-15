@@ -200,7 +200,7 @@ export default function init(api) {
       pills();
       setFooter();
       api.showModal({
-        title: "You won! 🎉",
+        title: "You won!",
         message: "All four runs cleared.",
         statsRows: [
           { label: "Streak", value: api.refreshStats().streak },

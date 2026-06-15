@@ -156,10 +156,9 @@ img { display: block; }
 .tile-art {
   position: absolute; inset: 0; z-index: 1;
   display: grid; place-items: center;
-  font-size: 64px;
   background: radial-gradient(circle at 50% 115%, var(--tile-glow, transparent), transparent 60%);
 }
-.tile-art .emoji { filter: drop-shadow(0 6px 10px rgba(0,0,0,.4)); transform: translateY(14px); }
+.tile-art svg { width: 58%; height: 58%; filter: drop-shadow(0 6px 10px rgba(0,0,0,.4)); transform: translateY(8px); }
 
 .badge-new {
   position: absolute; z-index: 3; top: 10px; right: 10px;
@@ -192,10 +191,14 @@ img { display: block; }
     linear-gradient(180deg, transparent 40%, var(--bg) 100%);
 }
 .detail-hero .hero-emoji {
-  position: absolute; z-index: 0; right: -6px; top: 40px;
-  font-size: 150px; opacity: 0.16; filter: blur(1px);
+  position: absolute; z-index: 0; right: 4px; top: 46px;
+  opacity: 0.18; filter: blur(0.5px);
   transform: rotate(-8deg);
 }
+.detail-hero .hero-emoji svg { width: 150px; height: 150px; }
+.chip-ico { display: inline-flex; }
+.chip-ico svg { width: 18px; height: 18px; }
+.btn-square svg { width: 24px; height: 24px; }
 .detail-top { position: relative; z-index: 2; display: flex; align-items: center; }
 .detail-top .star {
   margin-left: auto; font-size: 24px; color: var(--text-faint);
@@ -341,5 +344,6 @@ img { display: block; }
   flex: 1; display: grid; place-items: center; text-align: center;
   color: var(--text-dim); padding: 40px;
 }
-.placeholder .ph-emoji { font-size: 72px; margin-bottom: 12px; }
+.placeholder .ph-emoji { margin-bottom: 12px; }
+.placeholder .ph-emoji svg { width: 80px; height: 80px; }
 .placeholder b { color: var(--text); font-size: 20px; }

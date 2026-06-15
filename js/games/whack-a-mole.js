@@ -14,10 +14,20 @@ const STYLE = `
 .wm-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:3.5vw; width:min(86vw,360px); }
 .wm-hole { aspect-ratio:1; border-radius:50%; background:#0f1014; position:relative; overflow:hidden;
   box-shadow:inset 0 8px 18px rgba(0,0,0,.6); border:none; }
-.wm-mole { position:absolute; inset:14% 14% -2%; border-radius:46% 46% 40% 40%;
-  display:grid; place-items:center; font-size:11vw; transform:translateY(110%); transition:transform .12s ease; }
+.wm-mole { position:absolute; inset:16% 16% -4%; border-radius:48% 48% 42% 42%;
+  transform:translateY(112%); transition:transform .12s ease; }
 .wm-hole.up .wm-mole { transform:translateY(0); }
-.wm-hole.bonk .wm-mole { transform:translateY(0) scale(.7); filter:brightness(1.6); }
+.wm-hole.bonk .wm-mole { transform:translateY(10%) scale(.85); filter:brightness(1.5); }
+.wm-mole.mole { background:radial-gradient(circle at 50% 30%, #b5824e, #6f4a28); }
+.wm-mole.bomb { background:radial-gradient(circle at 38% 30%, #4a4a55, #14141a); }
+.wm-mole i { position:absolute; display:block; }
+.wm-eye { top:32%; width:15%; height:15%; border-radius:50%; background:#16100a; }
+.wm-eye.l { left:26%; } .wm-eye.r { right:26%; }
+.wm-snout { left:50%; top:50%; transform:translateX(-50%); width:38%; height:30%; border-radius:50%; background:#d8b189; }
+.wm-nose { left:50%; top:52%; transform:translateX(-50%); width:15%; height:12%; border-radius:50%; background:#3a2416; z-index:2; }
+.wm-shine { left:30%; top:22%; width:20%; height:16%; border-radius:50%; background:rgba(255,255,255,.28); }
+.wm-fuse { left:48%; top:-12%; width:7%; height:24%; background:#9a6a3c; border-radius:3px; transform:rotate(14deg); }
+.wm-spark { left:58%; top:-18%; width:13%; height:13%; border-radius:50%; background:#ffb400; box-shadow:0 0 9px #ffb400; }
 .wm-msg { font-size:18px; font-weight:700; color:var(--text-dim); min-height:22px; }
 `;
 
@@ -67,6 +77,20 @@ export default function init(api) {
     api.setStats({ left: { label: "Score", value: score }, right: { label: "Best", value: best } });
   }
 
+  function dressMole(mole, isBomb) {
+    mole.className = "wm-mole " + (isBomb ? "bomb" : "mole");
+    const parts = isBomb
+      ? ["wm-fuse", "wm-spark", "wm-shine"]
+      : ["wm-snout", "wm-eye l", "wm-eye r", "wm-nose", "wm-shine"];
+    mole.replaceChildren(
+      ...parts.map((cls) => {
+        const i = document.createElement("i");
+        i.className = cls;
+        return i;
+      })
+    );
+  }
+
   function popLoop() {
     if (!running) return;
     const free = holes.filter((h) => !h.state.up);
@@ -75,7 +99,7 @@ export default function init(api) {
       const isBomb = Math.random() < cfg.bombs;
       h.state.up = true;
       h.state.kind = isBomb ? "bomb" : "mole";
-      h.state.mole.textContent = isBomb ? "💣" : "🐹";
+      dressMole(h.state.mole, isBomb);
       h.classList.add("up");
       const t = setTimeout(() => hide(h), cfg.up);
       timers.add(t);
@@ -94,7 +118,7 @@ export default function init(api) {
     if (!running || !h.state.up) return;
     if (h.state.kind === "bomb") {
       score = Math.max(0, score - 3);
-      msg.textContent = "💥 Ouch! −3";
+      msg.textContent = "Ouch! -3";
     } else {
       score += 1;
       msg.textContent = "Bop!";
@@ -135,7 +159,7 @@ export default function init(api) {
     pills();
     msg.textContent = "Time!";
     api.showModal({
-      title: isRecord ? "New best! 🏆" : "Time's up!",
+      title: isRecord ? "New best!" : "Time's up!",
       statsRows: [
         { label: "Score", value: score },
         { label: "Best", value: api.refreshStats().highscore },

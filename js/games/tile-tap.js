@@ -150,7 +150,7 @@ export default function init(api) {
     pills();
     hint.textContent = reason;
     api.showModal({
-      title: isRecord ? "New best! 🏆" : "Game Over",
+      title: isRecord ? "New best!" : "Game Over",
       message: reason,
       statsRows: [
         { label: "Score", value: score },

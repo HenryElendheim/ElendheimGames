@@ -264,7 +264,7 @@ export default function init(api) {
     const { isRecord } = api.reportHighscore(score);
     pills();
     api.showModal({
-      title: isRecord ? "New high score! 🏆" : "No moves left",
+      title: isRecord ? "New high score!" : "No moves left",
       statsRows: [
         { label: "Score", value: score },
         { label: "Best", value: api.refreshStats().highscore },

@@ -135,14 +135,14 @@ export default function init(api) {
       if (isCpu) {
         if (winner === HUMAN) {
           api.reportWin();
-          title = "You win! 🎉";
+          title = "You win!";
         } else {
           api.reportLoss();
           title = "Computer wins";
         }
       } else {
         session[winner]++;
-        title = (winner === "R" ? "Red" : "Yellow") + " wins! 🎉";
+        title = (winner === "R" ? "Red" : "Yellow") + " wins!";
       }
     } else {
       title = "It's a draw";
