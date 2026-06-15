@@ -3,8 +3,11 @@
    7 tableau columns, 4 foundations, stock + waste. Build the tableau
    down in alternating colours; build foundations up by suit from the
    Ace. Move everything to the foundations to win.
-   Tap a card to pick it up, tap a column / foundation to drop it.
-   Tap the stock to draw (and to recycle the waste when empty).
+
+   Controls:
+     • Tap a card  → it flies to the best legal spot (foundation first).
+     • Press-hold or drag a card → carry it and drop it where you like.
+     • Tap the stock → draw (and recycle the waste when empty).
    Tracks: wins + streak.
    ============================================================ */
 
@@ -16,36 +19,47 @@ const SUITS = [
   { s: "♣", red: false },
 ];
 const isRed = (suit) => SUITS[suit].red;
+const GAP = 4;
 
 const STYLE = `
 .game-screen { background:#0e1b2b !important; }
 .so-wrap { flex:1; display:flex; flex-direction:column; gap:10px; padding:8px 8px 0; min-height:0; }
-.so-top { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
+.so-top { display:grid; grid-template-columns:repeat(7,1fr); gap:${GAP}px; }
 .so-slot { position:relative; aspect-ratio:7/10; border-radius:7px; box-shadow:inset 0 0 0 2px rgba(255,255,255,.1); }
 .so-slot.found { box-shadow:inset 0 0 0 2px rgba(255,255,255,.16); }
-.so-cols { flex:1; display:grid; grid-template-columns:repeat(7,1fr); gap:5px; align-items:start; overflow-y:auto; padding-bottom:12px; }
-.so-col { position:relative; min-height:78px; border-radius:8px; }
+.so-cols { flex:1; display:grid; grid-template-columns:repeat(7,1fr); gap:${GAP}px; align-items:start; overflow-y:auto; padding-bottom:12px; }
+.so-col { position:relative; min-height:var(--so-ch,72px); border-radius:8px; }
 .so-col.empty { box-shadow:inset 0 0 0 2px rgba(255,255,255,.08); }
 
-.so-card { position:relative; height:66px; border-radius:7px; background:#fbfbfb; box-shadow:0 1px 2px rgba(0,0,0,.45); overflow:hidden; }
-.so-col .so-card:not(:first-child) { margin-top:-46px; }
-.so-col .so-card.down:not(:first-child) { margin-top:-54px; }
+.so-card { position:relative; width:100%; height:var(--so-ch,72px); border-radius:7px; background:#fbfbfb;
+  box-shadow:0 1px 2px rgba(0,0,0,.45); overflow:hidden; touch-action:none; user-select:none;
+  -webkit-user-select:none; -webkit-touch-callout:none; }
+.so-col .so-card:not(:first-child) { margin-top:calc(var(--so-ch,72px) * -0.62); }
+.so-col .so-card.down:not(:first-child) { margin-top:calc(var(--so-ch,72px) * -0.80); }
 .so-card.down { background:linear-gradient(160deg,#9a6cf0,#6b3fcf);
   box-shadow:inset 0 2px 0 rgba(255,255,255,.3), inset 0 0 0 1px rgba(255,255,255,.18), 0 1px 2px rgba(0,0,0,.45); }
-.so-card .so-rk { position:absolute; top:2px; left:5px; font-size:14px; font-weight:800; line-height:1; }
-.so-card .so-cs { position:absolute; top:4px; left:19px; font-size:10px; }
-.so-card .so-pip { position:absolute; left:0; right:0; bottom:5px; text-align:center; font-size:26px; line-height:1; }
+.so-card .so-rk { position:absolute; top:3px; left:5px; font-size:calc(var(--so-ch,72px) * 0.21); font-weight:800; line-height:1; }
+.so-card .so-cs { position:absolute; top:calc(var(--so-ch,72px) * 0.05); left:calc(var(--so-cw,50px) * 0.42); font-size:calc(var(--so-ch,72px) * 0.15); }
+.so-card .so-pip { position:absolute; left:0; right:0; bottom:6px; text-align:center; font-size:calc(var(--so-ch,72px) * 0.36); line-height:1; }
 .so-card.navy .so-rk, .so-card.navy .so-cs, .so-card.navy .so-pip { color:#15294f; }
 .so-card.red .so-rk, .so-card.red .so-cs, .so-card.red .so-pip { color:#d63a2f; }
-.so-card.sel { box-shadow:0 0 0 2px var(--accent), 0 3px 9px rgba(0,0,0,.55); z-index:3; }
+.so-card.lift { opacity:.32; }
+.so-card.bad { animation:so-shake .32s ease; }
 .so-stockback { width:100%; height:100%; border-radius:7px; background:linear-gradient(160deg,#9a6cf0,#6b3fcf);
   box-shadow:inset 0 2px 0 rgba(255,255,255,.3), inset 0 0 0 1px rgba(255,255,255,.18); }
 .so-recycle { width:100%; height:100%; display:grid; place-items:center; font-size:24px; color:rgba(255,255,255,.4); }
 
+.so-drag { position:fixed; left:0; top:0; z-index:60; width:var(--so-cw,50px); pointer-events:none;
+  filter:drop-shadow(0 8px 14px rgba(0,0,0,.55)); will-change:transform; }
+.so-drag .so-card { box-shadow:0 2px 4px rgba(0,0,0,.4); }
+.so-drag .so-card:not(:first-child) { margin-top:calc(var(--so-ch,72px) * -0.62); }
+.so-col.drop-ok { box-shadow:inset 0 0 0 2px var(--accent,#5cc4ff); }
+.so-slot.drop-ok { box-shadow:inset 0 0 0 2px var(--accent,#5cc4ff); }
+
 @keyframes so-pop { from{transform:scale(.85);} to{transform:scale(1);} }
-.so-anim { animation:so-pop .16s ease; }
 @keyframes so-flip { from{transform:rotateY(90deg);} to{transform:rotateY(0);} }
 .so-anim-flip { animation:so-flip .26s ease; }
+@keyframes so-shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-5px);} 75%{transform:translateX(5px);} }
 `;
 
 export default function init(api) {
@@ -53,29 +67,47 @@ export default function init(api) {
   style.textContent = STYLE;
   document.head.append(style);
 
-  let stock, waste, foundations, tableau, sel, history, won;
+  let stock, waste, foundations, tableau, history, won;
   let pending = [];
+  let lift = null; // {type:'tab',col,idx}|{type:'waste'}|{type:'found',i} currently being dragged
+  let ghost = null;
 
   // top row: stock, waste, gap, 4 foundations
   const stockEl = mk("div", "so-slot");
   const wasteEl = mk("div", "so-slot");
+  wasteEl.dataset.waste = "1";
   const gapEl = mk("div", "");
-  const foundEls = [0, 1, 2, 3].map(() => mk("div", "so-slot found"));
+  const foundEls = [0, 1, 2, 3].map((i) => {
+    const el = mk("div", "so-slot found");
+    el.dataset.found = String(i);
+    return el;
+  });
   const topEl = mk("div", "so-top", stockEl, wasteEl, gapEl, ...foundEls);
   stockEl.addEventListener("click", onStock);
-  wasteEl.addEventListener("click", onWaste);
-  foundEls.forEach((el, i) => el.addEventListener("click", () => onFoundation(i)));
 
   const colsEl = mk("div", "so-cols");
   const colEls = Array.from({ length: 7 }, (_, j) => {
     const c = mk("div", "so-col");
-    c.addEventListener("click", () => onColumn(j));
+    c.dataset.col = String(j);
     colsEl.append(c);
     return c;
   });
 
   const wrap = mk("div", "so-wrap", topEl, colsEl);
   api.root.append(wrap);
+
+  // responsive card sizing — measure the columns and expose --so-cw/--so-ch
+  function measure() {
+    const w = colsEl.clientWidth;
+    if (!w) return;
+    const cw = Math.floor((w - 6 * GAP) / 7);
+    const ch = Math.round(cw * 1.42);
+    const root = document.documentElement.style;
+    root.setProperty("--so-cw", cw + "px");
+    root.setProperty("--so-ch", ch + "px");
+  }
+  const ro = new ResizeObserver(measure);
+  ro.observe(colsEl);
 
   api.onRestart(start);
 
@@ -107,12 +139,12 @@ export default function init(api) {
     stock = deck; // 24, face down
     waste = [];
     foundations = [[], [], [], []];
-    sel = null;
     history = [];
     won = false;
     pending = [];
     setFooter();
     pills();
+    measure();
     render();
   }
 
@@ -125,22 +157,18 @@ export default function init(api) {
     if (!history.length || won) return;
     const p = JSON.parse(history.pop());
     ({ stock, waste, foundations, tableau } = p);
-    sel = null;
     setFooter();
     render();
   }
 
-  /* ---- interactions ---- */
   function onStock() {
     if (won) return;
     snapshot();
-    sel = null;
     if (stock.length) {
       const c = stock.pop();
       c.faceUp = true;
       waste.push(c);
     } else {
-      // recycle waste back into the stock
       while (waste.length) {
         const c = waste.pop();
         c.faceUp = false;
@@ -149,86 +177,6 @@ export default function init(api) {
     }
     setFooter();
     render();
-  }
-
-  function onWaste(e) {
-    if (e) e.stopPropagation();
-    if (won || !waste.length) return;
-    if (sel) return clearSel();
-    sel = { from: "waste" };
-    render();
-  }
-
-  function onFoundation(i) {
-    if (won) return;
-    if (sel) {
-      const cards = selectedCards();
-      if (cards.length === 1 && canFound(cards[0], i)) {
-        applyMove(() => {
-          foundations[i].push(takeSelected()[0]);
-        });
-      } else clearSel();
-      return;
-    }
-    // select foundation top (to pull back to tableau)
-    if (foundations[i].length) {
-      sel = { from: "found", i };
-      render();
-    }
-  }
-
-  function onCard(col, idx, e) {
-    e.stopPropagation();
-    if (won) return;
-    if (sel) return onColumn(col);
-    if (validRun(tableau[col], idx)) {
-      sel = { from: "tab", col, idx };
-      render();
-    }
-  }
-
-  function onColumn(j) {
-    if (won || !sel) return;
-    if (sel.from === "tab" && sel.col === j) return clearSel();
-    const cards = selectedCards();
-    if (canTab(cards[0], j)) {
-      applyMove(() => {
-        tableau[j].push(...takeSelected());
-      });
-    } else clearSel();
-  }
-
-  function clearSel() {
-    sel = null;
-    render();
-  }
-
-  function selectedCards() {
-    if (sel.from === "waste") return [waste[waste.length - 1]];
-    if (sel.from === "found") return [foundations[sel.i][foundations[sel.i].length - 1]];
-    return tableau[sel.col].slice(sel.idx);
-  }
-
-  function takeSelected() {
-    if (sel.from === "waste") return [waste.pop()];
-    if (sel.from === "found") return [foundations[sel.i].pop()];
-    const run = tableau[sel.col].splice(sel.idx);
-    const c = tableau[sel.col];
-    if (c.length && !c[c.length - 1].faceUp) {
-      c[c.length - 1].faceUp = true;
-      pending.push({ col: sel.col, flip: true });
-    }
-    return run;
-  }
-
-  function applyMove(fn) {
-    snapshot();
-    pending = [];
-    fn();
-    sel = null;
-    setFooter();
-    render();
-    checkWin();
   }
 
   /* ---- rules ---- */
@@ -254,10 +202,164 @@ export default function init(api) {
     return t.suit === card.suit && card.rank === t.rank + 1;
   }
 
+  /* ---- grabbing / moving ---- */
+  // the cards a source would pick up (empty array if not movable)
+  function grabbed(source) {
+    if (source.type === "waste") return waste.length ? [waste[waste.length - 1]] : [];
+    if (source.type === "found") return foundations[source.i].length ? [foundations[source.i][foundations[source.i].length - 1]] : [];
+    if (source.type === "tab") return validRun(tableau[source.col], source.idx) ? tableau[source.col].slice(source.idx) : [];
+    return [];
+  }
+
+  function takeFrom(source) {
+    if (source.type === "waste") return [waste.pop()];
+    if (source.type === "found") return [foundations[source.i].pop()];
+    const run = tableau[source.col].splice(source.idx);
+    const col = tableau[source.col];
+    if (col.length && !col[col.length - 1].faceUp) {
+      col[col.length - 1].faceUp = true;
+      pending.push({ col: source.col, flip: true });
+    }
+    return run;
+  }
+
+  function doMove(source, destType, destIndex) {
+    snapshot();
+    pending = [];
+    const taken = takeFrom(source);
+    if (destType === "found") foundations[destIndex].push(taken[0]);
+    else tableau[destIndex].push(...taken);
+    setFooter();
+    render();
+    checkWin();
+  }
+
+  // tap: send to the best legal spot
+  function autoMove(source, cards, el) {
+    if (won) return;
+    if (source.type === "found") return; // pulling off a foundation is drag-only
+    if (cards.length === 1) {
+      for (let i = 0; i < 4; i++) if (canFound(cards[0], i)) return doMove(source, "found", i);
+    }
+    let emptyTarget = -1;
+    for (let j = 0; j < 7; j++) {
+      if (source.type === "tab" && source.col === j) continue;
+      if (!canTab(cards[0], j)) continue;
+      if (tableau[j].length) return doMove(source, "col", j);
+      if (emptyTarget < 0) emptyTarget = j;
+    }
+    if (emptyTarget >= 0) return doMove(source, "col", emptyTarget);
+    // nothing legal — nudge the card
+    if (el) {
+      el.classList.remove("bad");
+      void el.offsetWidth;
+      el.classList.add("bad");
+    }
+  }
+
+  /* ---- pointer gesture: tap to auto-move, hold/drag to carry ---- */
+  const HOLD = 150,
+    MOVE = 8;
+
+  function beginGesture(e, source, el) {
+    if (won || e.button > 0) return;
+    const cards = grabbed(source);
+    if (!cards.length) return;
+    e.preventDefault();
+    const sx = e.clientX,
+      sy = e.clientY;
+    const rect = el.getBoundingClientRect();
+    const offX = sx - rect.left,
+      offY = sy - rect.top;
+    let dragging = false;
+    const hold = setTimeout(begin, HOLD);
+
+    function begin() {
+      if (dragging || won) return;
+      dragging = true;
+      startDrag(source, cards);
+      moveGhost(sx, offX, sy, offY);
+    }
+    function onMove(ev) {
+      const x = ev.clientX,
+        y = ev.clientY;
+      if (!dragging) {
+        if (Math.abs(x - sx) > MOVE || Math.abs(y - sy) > MOVE) {
+          clearTimeout(hold);
+          begin();
+        }
+      }
+      if (dragging) {
+        ev.preventDefault();
+        moveGhost(x, offX, y, offY);
+        highlightDrop(x, y, cards, source);
+      }
+    }
+    function onUp(ev) {
+      clearTimeout(hold);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      if (dragging) endDrag(ev.clientX, ev.clientY, source, cards);
+      else autoMove(source, cards, el);
+    }
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  }
+
+  function startDrag(source, cards) {
+    lift = source;
+    render(); // dims the originals
+    ghost = mk("div", "so-drag", ...cards.map(faceCard));
+    document.body.append(ghost);
+  }
+
+  function moveGhost(x, offX, y, offY) {
+    if (ghost) ghost.style.transform = `translate(${x - offX}px, ${y - offY}px)`;
+  }
+
+  function dropTarget(x, y) {
+    let el = document.elementFromPoint(x, y);
+    while (el && el !== document.body) {
+      if (el.dataset && el.dataset.col != null) return { type: "col", j: +el.dataset.col };
+      if (el.dataset && el.dataset.found != null) return { type: "found", i: +el.dataset.found };
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  function validDrop(t, cards, source) {
+    if (!t) return false;
+    if (t.type === "found") return cards.length === 1 && !(source.type === "found" && source.i === t.i) && canFound(cards[0], t.i);
+    return !(source.type === "tab" && source.col === t.j) && canTab(cards[0], t.j);
+  }
+
+  function highlightDrop(x, y, cards, source) {
+    colsEl.querySelectorAll(".drop-ok").forEach((n) => n.classList.remove("drop-ok"));
+    foundEls.forEach((n) => n.classList.remove("drop-ok"));
+    const t = dropTarget(x, y);
+    if (validDrop(t, cards, source)) {
+      if (t.type === "col") colEls[t.j].classList.add("drop-ok");
+      else foundEls[t.i].classList.add("drop-ok");
+    }
+  }
+
+  function endDrag(x, y, source, cards) {
+    const t = dropTarget(x, y);
+    const ok = validDrop(t, cards, source);
+    if (ghost) ghost.remove();
+    ghost = null;
+    lift = null;
+    colsEl.querySelectorAll(".drop-ok").forEach((n) => n.classList.remove("drop-ok"));
+    foundEls.forEach((n) => n.classList.remove("drop-ok"));
+    if (ok) doMove(source, t.type === "found" ? "found" : "col", t.type === "found" ? t.i : t.j);
+    else render();
+  }
+
   function checkWin() {
     if (foundations.reduce((n, f) => n + f.length, 0) !== 52) return;
     won = true;
-    sel = null;
     api.reportWin();
     pills();
     setFooter();
@@ -292,8 +394,8 @@ export default function init(api) {
       const c = faceCard(waste[waste.length - 1]);
       c.style.position = "absolute";
       c.style.inset = "0";
-      if (sel && sel.from === "waste") c.classList.add("sel");
-      c.addEventListener("click", onWaste);
+      if (lift && lift.type === "waste") c.classList.add("lift");
+      c.addEventListener("pointerdown", (e) => beginGesture(e, { type: "waste" }, c));
       wasteEl.append(c);
     }
     // foundations
@@ -304,7 +406,8 @@ export default function init(api) {
         const c = faceCard(f[f.length - 1]);
         c.style.position = "absolute";
         c.style.inset = "0";
-        if (sel && sel.from === "found" && sel.i === i) c.classList.add("sel");
+        if (lift && lift.type === "found" && lift.i === i) c.classList.add("lift");
+        c.addEventListener("pointerdown", (e) => beginGesture(e, { type: "found", i }, c));
         el.append(c);
       }
     });
@@ -315,8 +418,8 @@ export default function init(api) {
       colEl.classList.toggle("empty", tableau[j].length === 0);
       tableau[j].forEach((card, idx) => {
         const el = card.faceUp ? faceCard(card) : mk("div", "so-card down");
-        if (sel && sel.from === "tab" && sel.col === j && idx >= sel.idx) el.classList.add("sel");
-        el.addEventListener("click", (e) => onCard(j, idx, e));
+        if (lift && lift.type === "tab" && lift.col === j && idx >= lift.idx) el.classList.add("lift");
+        if (card.faceUp) el.addEventListener("pointerdown", (e) => beginGesture(e, { type: "tab", col: j, idx }, el));
         colEl.append(el);
       });
     }
@@ -332,5 +435,14 @@ export default function init(api) {
   }
 
   start();
-  return { destroy: () => style.remove() };
+  return {
+    destroy: () => {
+      ro.disconnect();
+      if (ghost) ghost.remove();
+      const root = document.documentElement.style;
+      root.removeProperty("--so-cw");
+      root.removeProperty("--so-ch");
+      style.remove();
+    },
+  };
 }
