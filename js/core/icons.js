@@ -22,6 +22,13 @@ const GAME = {
      <line x1="16" y1="84" x2="86" y2="24" stroke="#fff" stroke-width="6" stroke-linecap="round"/>`,
   spiderette:
     `<path d="M50 16C68 38 84 46 84 62a15 15 0 0 1-26 10c1 9 6 13 11 18H31c5-5 10-9 11-18a15 15 0 0 1-26-10C16 46 32 38 50 16Z" fill="#dfe4ee"/>`,
+  "kings-corners":
+    `<rect x="38" y="12" width="24" height="34" rx="4" fill="#fafafa"/>
+     <rect x="38" y="54" width="24" height="34" rx="4" fill="#fafafa"/>
+     <rect x="12" y="38" width="34" height="24" rx="4" fill="#fafafa"/>
+     <rect x="54" y="38" width="34" height="24" rx="4" fill="#fafafa"/>
+     <rect x="40" y="40" width="20" height="20" rx="3" fill="#d4a017"/>
+     <path d="M44 50l3-5 3 4 3-4 3 5z" fill="#fff"/>`,
   solitaire:
     `<rect x="14" y="24" width="34" height="48" rx="5" fill="#cfd4dd" transform="rotate(-9 31 48)"/>
      <rect x="40" y="20" width="38" height="54" rx="6" fill="#fafafa"/>

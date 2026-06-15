@@ -31,6 +31,17 @@ export const GAMES = [
     loader: () => import("../games/spiderette.js"),
   },
   {
+    id: "kings-corners",
+    title: "King's Corners",
+    accent: "#d4a017",
+    desc: "Build down in alternating colours on the cross, start the corners with Kings, and empty your hand before the computer.",
+    scoreType: "wins",
+    difficulty: null,
+    modes: null,
+    isNew: true,
+    loader: () => import("../games/kings-corners.js"),
+  },
+  {
     id: "solitaire",
     title: "Solitaire",
     accent: "#2c8c5a",

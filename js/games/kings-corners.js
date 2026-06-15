@@ -1,0 +1,368 @@
+/* ============================================================
+   King's Corners — vs Computer.
+   A cross of 4 edge piles around the stock, plus 4 corner piles.
+   Draw one at the start of your turn, then play as many cards as
+   you like: build DOWN in alternating colour on the edges, start
+   the corners with Kings only. Move whole piles to free space.
+   First to empty their hand wins. Tracks wins + streak.
+   ============================================================ */
+
+const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+
+const STYLE = `
+.kc-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:10px; padding:12px 10px 8px; }
+.kc-msg { font-size:14px; font-weight:700; min-height:20px; text-align:center; color:var(--text-dim); letter-spacing:.02em; }
+.kc-msg b { color:#fff; }
+.kc-board { display:grid; grid-template-columns:repeat(3, 1fr); gap:9px; width:100%; max-width:280px; }
+.kc-cell { aspect-ratio:5/7; border-radius:9px; position:relative; display:grid; place-items:center; }
+.kc-slot { width:100%; height:100%; border-radius:9px; border:2px dashed rgba(255,255,255,.18); display:grid; place-items:center; }
+.kc-slot.corner { border-style:dotted; }
+.kc-slot .hint { font-size:9px; color:rgba(255,255,255,.3); font-weight:700; letter-spacing:.06em; }
+.kc-card { width:100%; height:100%; border-radius:9px; background:#fbfbfb; color:#1a1a1a; position:relative;
+  box-shadow:0 3px 7px rgba(0,0,0,.4); display:grid; place-items:center; font-size:22px; font-weight:800;
+  user-select:none; animation:kc-deal .18s ease; }
+.kc-card.red { color:#d63a2f; }
+.kc-card .rk { position:absolute; top:3px; left:5px; font-size:12px; line-height:1; }
+.kc-card.back { background:repeating-linear-gradient(45deg,#caa017,#caa017 5px,#a8830f 5px,#a8830f 10px); color:#fff; }
+.kc-cell.target .kc-card, .kc-cell.target .kc-slot { outline:3px solid var(--kc-glow,#ffd75e); outline-offset:1px; box-shadow:0 0 14px var(--kc-glow,#ffd75e); }
+.kc-cell.target .kc-slot { border-color:var(--kc-glow,#ffd75e); }
+.kc-cell.sel .kc-card { outline:3px solid #fff; outline-offset:1px; }
+.kc-stock { position:relative; cursor:default; }
+.kc-stock .cnt { position:absolute; bottom:3px; right:5px; font-size:11px; font-weight:800; color:#fff;
+  text-shadow:0 1px 2px #000; }
+.kc-hand { display:flex; gap:0; padding:6px 4px 2px; min-height:74px; align-items:flex-end; overflow-x:auto;
+  width:100%; justify-content:center; }
+.kc-hand .kc-card { width:48px; height:68px; flex:0 0 auto; margin-left:-14px; transition:transform .12s; font-size:18px; }
+.kc-hand .kc-card:first-child { margin-left:0; }
+.kc-hand .kc-card.sel { transform:translateY(-12px); outline:3px solid var(--kc-glow,#ffd75e); }
+.kc-hand .kc-card.playable { box-shadow:0 0 0 2px rgba(255,215,94,.55), 0 3px 7px rgba(0,0,0,.4); }
+.kc-tag { font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dim); }
+@keyframes kc-deal { from{transform:translateY(-10px);opacity:.3;} to{transform:none;opacity:1;} }
+`;
+
+export default function init(api) {
+  const style = document.createElement("style");
+  style.textContent = STYLE;
+  document.head.append(style);
+  const glow = api.glow(0.9);
+
+  // --- state ---
+  let stock, edges, corners, hand, cpuHand, turn, busy, selHand, selPile, played, stalls;
+
+  const msg = document.createElement("div");
+  msg.className = "kc-msg";
+  const board = document.createElement("div");
+  board.className = "kc-board";
+  const cpuTag = document.createElement("div");
+  cpuTag.className = "kc-tag";
+  const handEl = document.createElement("div");
+  handEl.className = "kc-hand";
+  const wrap = document.createElement("div");
+  wrap.className = "kc-wrap";
+  wrap.style.setProperty("--kc-glow", glow);
+  wrap.append(cpuTag, msg, board, document.createElement("div"), handEl);
+  api.root.append(wrap);
+
+  api.onRestart(start);
+
+  // --- deck helpers ---
+  function makeDeck() {
+    const suits = [["♠", "b"], ["♣", "b"], ["♥", "r"], ["♦", "r"]];
+    const d = [];
+    for (const [s, c] of suits) for (let i = 0; i < 13; i++) d.push({ r: RANKS[i], s, c, v: i + 1 });
+    for (let i = d.length - 1; i > 0; i--) {
+      const j = (Math.random() * (i + 1)) | 0;
+      [d[i], d[j]] = [d[j], d[i]];
+    }
+    return d;
+  }
+
+  // can `card` be placed on `pile`?
+  function canPlace(card, pile) {
+    if (pile.cards.length === 0) return pile.type === "corner" ? card.v === 13 : true;
+    const top = pile.cards[pile.cards.length - 1];
+    return card.v === top.v - 1 && card.c !== top.c;
+  }
+  // can the whole `src` pile be moved onto `dst`? (lead = highest = src.cards[0])
+  function canMovePile(src, dst) {
+    if (src === dst || src.cards.length === 0) return false;
+    return canPlace(src.cards[0], dst);
+  }
+
+  const allPiles = () => edges.concat(corners);
+
+  function anyHandPlay(h) {
+    return h.some((c) => allPiles().some((p) => canPlace(c, p)));
+  }
+
+  // --- rendering ---
+  function cardFace(c, cls = "") {
+    const el = document.createElement("div");
+    el.className = "kc-card" + (c.c === "r" ? " red" : "") + (cls ? " " + cls : "");
+    el.innerHTML = `<span class="rk">${c.r}</span>${c.s}`;
+    return el;
+  }
+
+  function pileCell(pile) {
+    const cell = document.createElement("div");
+    cell.className = "kc-cell";
+    if (pile.cards.length) {
+      cell.append(cardFace(pile.cards[pile.cards.length - 1]));
+    } else {
+      const slot = document.createElement("div");
+      slot.className = "kc-slot" + (pile.type === "corner" ? " corner" : "");
+      if (pile.type === "corner") slot.innerHTML = '<span class="hint">K</span>';
+      cell.append(slot);
+    }
+    if (selPile === pile) cell.classList.add("sel");
+    // highlight legal targets for the current selection
+    const card = selHand != null ? hand[selHand] : null;
+    if (card && canPlace(card, pile)) cell.classList.add("target");
+    if (selPile && canMovePile(selPile, pile)) cell.classList.add("target");
+    cell.addEventListener("click", () => onPile(pile));
+    return cell;
+  }
+
+  function stockCell() {
+    const cell = document.createElement("div");
+    cell.className = "kc-cell kc-stock";
+    if (stock.length) {
+      const back = cardFace({ r: "", s: "", c: "b" }, "back");
+      back.querySelector(".rk").textContent = "";
+      back.childNodes[1] && (back.childNodes[1].textContent = "");
+      const cnt = document.createElement("div");
+      cnt.className = "cnt";
+      cnt.textContent = stock.length;
+      back.append(cnt);
+      cell.append(back);
+    } else {
+      const slot = document.createElement("div");
+      slot.className = "kc-slot";
+      slot.innerHTML = '<span class="hint">EMPTY</span>';
+      cell.append(slot);
+    }
+    return cell;
+  }
+
+  function render() {
+    // grid order: TL, N, TR / W, stock, E / BL, S, BR
+    const order = [corners[0], edges[0], corners[1], edges[3], "stock", edges[1], corners[2], edges[2], corners[3]];
+    board.replaceChildren(...order.map((p) => (p === "stock" ? stockCell() : pileCell(p))));
+
+    handEl.replaceChildren(
+      ...hand.map((c, i) => {
+        const playable = anyHandPlay([c]);
+        const el = cardFace(c, (i === selHand ? "sel " : "") + (playable && turn === "you" ? "playable" : ""));
+        el.style.zIndex = i;
+        el.addEventListener("click", () => onHand(i));
+        return el;
+      })
+    );
+    cpuTag.textContent = `Computer · ${cpuHand.length} card${cpuHand.length === 1 ? "" : "s"}`;
+    api.setStats({ left: { label: "Your cards", value: hand.length }, right: { label: "CPU cards", value: cpuHand.length } });
+  }
+
+  // --- player interaction ---
+  function onHand(i) {
+    if (busy || turn !== "you") return;
+    selPile = null;
+    selHand = selHand === i ? null : i;
+    setMsg();
+    render();
+  }
+
+  function onPile(pile) {
+    if (busy || turn !== "you") return;
+    if (selHand != null) {
+      const card = hand[selHand];
+      if (canPlace(card, pile)) {
+        pile.cards.push(card);
+        hand.splice(selHand, 1);
+        selHand = null;
+        played = true;
+        stalls = 0;
+        render();
+        if (hand.length === 0) return finish("you");
+        setMsg();
+      }
+      return;
+    }
+    if (selPile) {
+      if (canMovePile(selPile, pile)) {
+        pile.cards.push(...selPile.cards);
+        selPile.cards = [];
+        selPile = null;
+        played = true;
+        render();
+        setMsg();
+      } else {
+        selPile = selPile === pile ? null : pile.cards.length ? pile : null;
+        render();
+      }
+      return;
+    }
+    // no selection: pick up a non-empty pile to move it
+    if (pile.cards.length) {
+      selPile = pile;
+      setMsg("Pick a pile or edge to move this stack onto.");
+      render();
+    }
+  }
+
+  function setMsg(text) {
+    if (text) { msg.innerHTML = text; return; }
+    if (turn !== "you") { msg.textContent = "Computer is thinking…"; return; }
+    msg.innerHTML = anyMove("you")
+      ? "<b>Your turn</b> — play cards, then end your turn."
+      : "<b>Your turn</b> — no moves, tap End Turn.";
+  }
+
+  function anyMove(who) {
+    const h = who === "you" ? hand : cpuHand;
+    if (anyHandPlay(h)) return true;
+    // a pile move that frees an edge and lets a hand card land there
+    for (const src of edges) {
+      if (!src.cards.length) continue;
+      for (const dst of allPiles()) {
+        if (canMovePile(src, dst)) {
+          if (h.some((c) => c.v === 13) || true) return true; // freeing an edge always opens an "any card" slot
+        }
+      }
+    }
+    return false;
+  }
+
+  // --- turn flow ---
+  function endTurn() {
+    if (busy || turn !== "you") return;
+    selHand = null;
+    selPile = null;
+    if (!played) stalls++;
+    if (checkStalemate()) return;
+    turn = "cpu";
+    busy = true;
+    setFooter();
+    setMsg();
+    render();
+    setTimeout(cpuTurn, 550);
+  }
+
+  function checkStalemate() {
+    if (stock.length === 0 && stalls >= 2) {
+      finish(hand.length < cpuHand.length ? "you" : cpuHand.length < hand.length ? "cpu" : "tie");
+      return true;
+    }
+    return false;
+  }
+
+  function startYourTurn() {
+    turn = "you";
+    played = false;
+    if (stock.length) hand.push(stock.pop());
+    busy = false;
+    setFooter();
+    setMsg();
+    render();
+  }
+
+  // --- CPU ---
+  function cpuPlayOne() {
+    // 1) direct hand play — prefer Kings to empty corners, then highest card
+    let best = null;
+    for (let i = 0; i < cpuHand.length; i++) {
+      for (const p of allPiles()) {
+        if (!canPlace(cpuHand[i], p)) continue;
+        const score =
+          (p.type === "corner" && p.cards.length === 0 ? 100 : 0) + cpuHand[i].v;
+        if (!best || score > best.score) best = { i, p, score };
+      }
+    }
+    if (best) {
+      best.p.cards.push(cpuHand[best.i]);
+      cpuHand.splice(best.i, 1);
+      return true;
+    }
+    // 2) pile move that opens an edge so a hand card can be placed there
+    for (const src of edges) {
+      if (!src.cards.length) continue;
+      for (const dst of allPiles()) {
+        if (!canMovePile(src, dst)) continue;
+        if (cpuHand.length) {
+          dst.cards.push(...src.cards);
+          src.cards = [];
+          return true; // next step will drop a card on the freed edge
+        }
+      }
+    }
+    return false;
+  }
+
+  function cpuTurn() {
+    if (stock.length) cpuHand.push(stock.pop());
+    let progressed = false;
+    const step = () => {
+      const did = cpuPlayOne();
+      if (did) {
+        progressed = true;
+        stalls = 0;
+        render();
+        if (cpuHand.length === 0) return finish("cpu");
+        setTimeout(step, 480);
+      } else {
+        if (!progressed) stalls++;
+        if (checkStalemate()) return;
+        startYourTurn();
+      }
+    };
+    setTimeout(step, 480);
+  }
+
+  function setFooter() {
+    api.setFooter([{ icon: "✓", label: "End Turn", onClick: endTurn, accent: true, disabled: turn !== "you" || busy }]);
+  }
+
+  function finish(winner) {
+    busy = true;
+    turn = "done";
+    setFooter();
+    render();
+    const won = winner === "you";
+    if (winner === "you") api.reportWin();
+    else if (winner === "cpu") api.reportLoss();
+    const s = api.refreshStats();
+    setMsg(won ? "<b>You win!</b>" : winner === "tie" ? "<b>It's a tie.</b>" : "<b>Computer wins.</b>");
+    api.showModal({
+      title: won ? "You win!" : winner === "tie" ? "It's a tie" : "Computer wins",
+      message: won ? "You emptied your hand first." : winner === "tie" ? "Equal cards left when the stock ran out." : "The computer emptied its hand first.",
+      statsRows: [
+        { label: "Your cards", value: hand.length },
+        { label: "Streak", value: s.streak },
+        { label: "Wins", value: s.wins },
+      ],
+      primaryLabel: "Play Again",
+      onPrimary: start,
+    });
+  }
+
+  function start() {
+    const deck = makeDeck();
+    edges = [0, 1, 2, 3].map(() => ({ type: "edge", cards: [] }));
+    corners = [0, 1, 2, 3].map(() => ({ type: "corner", cards: [] }));
+    hand = deck.splice(0, 7);
+    cpuHand = deck.splice(0, 7);
+    for (const e of edges) e.cards.push(deck.pop());
+    stock = deck;
+    turn = "you";
+    busy = false;
+    selHand = null;
+    selPile = null;
+    played = false;
+    stalls = 0;
+    setFooter();
+    setMsg();
+    render();
+  }
+
+  start();
+  return { destroy: () => style.remove() };
+}
