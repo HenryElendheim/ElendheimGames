@@ -68,14 +68,8 @@ const GAME = {
      <text x="50" y="44" font-size="15" font-weight="800" fill="#1a1a1a" font-family="sans-serif">A</text>
      <text x="55" y="72" font-size="24" fill="#1a1a1a" font-family="sans-serif">&#9824;</text>`,
   chess:
-    `<g fill="#e9edf4">
-       <path d="M33 24C41 26 42 33 38 38C41 50 44 58 45 66L47 66L47 80L19 80L19 66L21 66C22 58 25 50 28 38C24 33 25 26 33 24Z"/>
-       <path d="M30.5 8H35.5V12.5H40V17.5H35.5V22H30.5V17.5H26V12.5H30.5Z"/>
-     </g>
-     <g fill="#20242e" stroke="#c4cad8" stroke-width="2.5" stroke-linejoin="round">
-       <path d="M67 24C75 26 76 33 72 38C75 50 78 58 79 66L81 66L81 80L53 80L53 66L55 66C56 58 59 50 62 38C58 33 59 26 67 24Z"/>
-       <path d="M64.5 8H69.5V12.5H74V17.5H69.5V22H64.5V17.5H60V12.5H64.5Z"/>
-     </g>`,
+    `<text x="30" y="70" font-size="50" fill="#e9edf4" text-anchor="middle" font-family="'Baloo 2', sans-serif">&#9818;</text>
+     <text x="70" y="70" font-size="50" fill="#20242e" stroke="#c8cedb" stroke-width="1.6" paint-order="stroke" text-anchor="middle" font-family="'Baloo 2', sans-serif">&#9818;</text>`,
   tetris:
     `<g stroke="#15161a" stroke-width="2">
        <rect x="26" y="28" width="16" height="16" fill="#7c4dff"/><rect x="42" y="28" width="16" height="16" fill="#7c4dff"/>
