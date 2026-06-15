@@ -120,7 +120,8 @@ export default function init(api) {
     f.sliced = true;
     if (f.bomb) {
       popup(f.x, f.y, "💥", "#ef5350");
-      return gameOver(true);
+      loseLife(true);
+      return;
     }
     score++;
     combo++;
@@ -212,10 +213,10 @@ export default function init(api) {
     rafId = requestAnimationFrame(loop);
   }
 
-  function loseLife() {
+  function loseLife(byBomb = false) {
     lives--;
     drawLives();
-    if (lives <= 0) gameOver(false);
+    if (lives <= 0) gameOver(byBomb);
   }
 
   function start() {
