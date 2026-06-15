@@ -10,8 +10,8 @@ const STYLE = `
 .ttt-status { font-size:18px; font-weight:700; color:var(--text-dim); min-height:24px; text-align:center; }
 .ttt-board { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; width:min(84vw,360px); aspect-ratio:1; }
 .ttt-cell { background:var(--surface); border-radius:18px; display:grid; place-items:center;
-  font-size:14vw; max-font-size:72px; font-weight:800; transition:transform .1s, background .12s, box-shadow .12s; }
-.ttt-cell:active { transform:scale(.95); }
+  font-size:clamp(34px,14vw,72px); font-weight:800; transition:background .12s, box-shadow .12s; }
+@media (hover:hover) { .ttt-cell:active { transform:scale(.95); } }
 .ttt-cell.x { color:var(--blue); }
 .ttt-cell.o { color:var(--accent); }
 .ttt-cell.win { box-shadow:inset 0 0 0 3px currentColor; background:var(--surface-2); }

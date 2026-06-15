@@ -180,6 +180,14 @@ export default function init(api) {
       f.x += f.vx * dt;
       f.y += f.vy * dt;
       f.rot += f.spin * dt;
+      // bounce off the side walls so fruit always stays hittable on screen
+      if (f.x < f.r) {
+        f.x = f.r;
+        f.vx = Math.abs(f.vx);
+      } else if (f.x > W - f.r) {
+        f.x = W - f.r;
+        f.vx = -Math.abs(f.vx);
+      }
       if (f.y - f.r > H + 60) {
         fruits.splice(i, 1);
         if (!f.bomb && running) loseLife();

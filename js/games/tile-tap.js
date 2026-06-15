@@ -19,6 +19,9 @@ const STYLE = `
 .tap-tile { position:absolute; border-radius:9px; background:linear-gradient(180deg,#2c3550,#1c2336);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.06); will-change:transform; }
 .tap-tile.hit { background:linear-gradient(180deg,#26e0b8,#13a98b); box-shadow:0 0 14px rgba(24,194,156,.6); }
+.tap-count { position:absolute; inset:0; display:grid; place-items:center; pointer-events:none; z-index:5; }
+.tap-count span { font-size:104px; font-weight:800; color:#fff; text-shadow:0 6px 20px rgba(0,0,0,.7); animation:tap-pop .6s ease; }
+@keyframes tap-pop { 0%{transform:scale(.4);opacity:0;} 25%{opacity:1;} 100%{transform:scale(1.3);opacity:0;} }
 `;
 
 const START = { EASY: 0.8, MEDIUM: 1.15, HARD: 1.6 };
@@ -47,7 +50,9 @@ export default function init(api) {
   api.root.append(wrap);
 
   let boardW, boardH, colW, tileH;
-  let scroll, speed, tiles, nextRow, over, score, rafId, lastT, started;
+  let scroll, speed, tiles, nextRow, over, score, rafId, lastT;
+  let counting = false;
+  let countTimers = [];
 
   api.onRestart(start);
   board.addEventListener("pointerdown", onTap);
@@ -89,7 +94,7 @@ export default function init(api) {
   }
 
   function onTap(e) {
-    if (over) return;
+    if (over || counting) return;
     const tile = e.target.__tile;
     if (!tile) return; // tapped empty space — ignored (forgiving)
     if (tile.hit) return;
@@ -121,6 +126,10 @@ export default function init(api) {
     rafId = requestAnimationFrame(frame);
   }
 
+  function positionTiles() {
+    for (const tile of tiles) tile.el.style.transform = `translateY(${(scroll - tile.row) * tileH}px)`;
+  }
+
   function start() {
     cancel();
     measure();
@@ -132,15 +141,47 @@ export default function init(api) {
     nextRow = 0;
     board.querySelectorAll(".tap-tile").forEach((n) => n.remove());
     fill();
+    positionTiles(); // show the starting tiles in place during the countdown
     pills();
-    hint.textContent = "Tap the lowest dark tile";
-    lastT = performance.now();
-    rafId = requestAnimationFrame(frame);
+    hint.textContent = "Get ready…";
+    counting = true;
+    runCountdown(["3", "2", "1", "GO!"], () => {
+      counting = false;
+      hint.textContent = "Tap the lowest dark tile";
+      lastT = performance.now();
+      rafId = requestAnimationFrame(frame);
+    });
+  }
+
+  function runCountdown(steps, done) {
+    const overlay = document.createElement("div");
+    overlay.className = "tap-count";
+    board.append(overlay);
+    let i = 0;
+    const next = () => {
+      if (i >= steps.length) {
+        overlay.remove();
+        return done();
+      }
+      const span = document.createElement("span");
+      span.textContent = steps[i++];
+      overlay.replaceChildren(span);
+      countTimers.push(setTimeout(next, 600));
+    };
+    next();
+  }
+
+  function clearCount() {
+    counting = false;
+    countTimers.forEach(clearTimeout);
+    countTimers = [];
+    board.querySelectorAll(".tap-count").forEach((n) => n.remove());
   }
 
   function cancel() {
     if (rafId) cancelAnimationFrame(rafId);
     rafId = null;
+    clearCount();
   }
 
   function gameOver(reason) {

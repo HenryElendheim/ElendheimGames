@@ -38,10 +38,9 @@ const PST_KNIGHT = [
 const STYLE = `
 .ch-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:10px; padding:10px; }
 .ch-status { font-size:16px; font-weight:700; color:var(--text-dim); min-height:22px; }
-.ch-board { display:grid; grid-template-columns:repeat(8,1fr); width:min(94vw,420px); aspect-ratio:1;
-  border-radius:10px; overflow:hidden; box-shadow:var(--shadow); touch-action:manipulation; }
-.ch-sq { position:relative; display:grid; place-items:center; font-size:8vw; line-height:1; }
-.ch-board .ch-sq { max-font-size:42px; }
+.ch-board { display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr);
+  width:min(94vw,420px); aspect-ratio:1; border-radius:10px; overflow:hidden; box-shadow:var(--shadow); touch-action:manipulation; }
+.ch-sq { position:relative; display:grid; place-items:center; font-size:clamp(20px,8vw,40px); line-height:1; }
 .ch-sq.light { background:#cdd3e0; } .ch-sq.dark { background:#6c7aa3; }
 .ch-sq.sel { background:#f5d36b !important; }
 .ch-sq.check { background:#ef5350 !important; }

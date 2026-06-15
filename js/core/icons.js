@@ -84,6 +84,13 @@ const UI = {
     `<rect x="18" y="50" width="15" height="30" rx="2" fill="currentColor"/>
      <rect x="42" y="32" width="15" height="48" rx="2" fill="currentColor"/>
      <rect x="66" y="42" width="15" height="38" rx="2" fill="currentColor"/>`,
+  spider:
+    `<g fill="none" stroke="#241046" stroke-width="5" stroke-linecap="round">
+       <path d="M40 40 L18 28 M40 49 L14 44 M40 57 L14 60 M40 64 L18 74"/>
+       <path d="M60 40 L82 28 M60 49 L86 44 M60 57 L86 60 M60 64 L82 74"/>
+     </g>
+     <ellipse cx="50" cy="54" rx="13" ry="17" fill="#241046"/>
+     <circle cx="50" cy="36" r="9" fill="#241046"/>`,
   gear:
     `<g fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round">
        <circle cx="50" cy="50" r="19"/>

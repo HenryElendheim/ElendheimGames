@@ -356,6 +356,9 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 .modal h2 { margin: 0 0 6px; font-size: 26px; font-weight: 800; }
 .modal p { margin: 0 0 18px; color: var(--text-dim); font-weight: 600; }
 .modal .btn-play { width: 100%; }
+.modal .btn-menu { width: 100%; margin-top: 10px; height: 48px; border-radius: 16px;
+  background: var(--surface-2); color: var(--text-dim); font-weight: 800; font-size: 16px; letter-spacing: .02em; }
+.modal .btn-menu:active { transform: translateY(1px); }
 .modal .modal-stats { display:flex; justify-content:center; gap: 18px; margin: 4px 0 20px; }
 .modal .ms { text-align:center; }
 .modal .ms b { display:block; font-size: 26px; font-weight: 800; }

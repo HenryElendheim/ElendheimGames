@@ -13,9 +13,8 @@ const STYLE = `
 .c4-status { font-size:18px; font-weight:700; color:var(--text-dim); min-height:24px; }
 .c4-board { display:grid; grid-template-columns:repeat(${COLS},1fr); gap:2.2vw; max-gap:12px;
   width:min(92vw,420px); padding:3vw; background:#2b3550; border-radius:18px; box-shadow:var(--shadow); }
-.c4-cell { aspect-ratio:1; border-radius:50%; background:#15161a; transition:transform .08s;
-  border:none; padding:0; }
-.c4-cell:active { transform:scale(.94); }
+.c4-cell { aspect-ratio:1; border-radius:50%; background:#15161a; border:none; padding:0; }
+@media (hover:hover) { .c4-cell:active { transform:scale(.94); } }
 .c4-cell.r { background:radial-gradient(circle at 35% 30%, #ff7b6b, #e23b2e); }
 .c4-cell.y { background:radial-gradient(circle at 35% 30%, #ffd66b, #f5a623); }
 .c4-cell.win { box-shadow:0 0 0 3px #fff, 0 0 12px #fff; }

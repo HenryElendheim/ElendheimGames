@@ -111,6 +111,17 @@ export function createGameShell(game, settings, { onExit }) {
               },
             },
             primaryLabel
+          ),
+          el(
+            "button",
+            {
+              class: "btn-menu",
+              onClick: () => {
+                back.remove();
+                location.hash = "#/"; // back to the library of all games
+              },
+            },
+            "Main Menu"
           )
         )
       );
