@@ -60,7 +60,9 @@ export default function init(api) {
   style.textContent = STYLE;
   document.head.append(style);
 
-  const suitCount = { EASY: 1, MEDIUM: 2, HARD: 4 }[api.settings.difficulty] || 1;
+  // spades only, except Ultra Hard (spades + hearts) and Insanity (all four suits)
+  const SUITS = { EASY: 1, MEDIUM: 1, HARD: 1, "ULTRA HARD": 2, INSANITY: 4 };
+  const suitCount = SUITS[api.settings.difficulty] || 1;
 
   let cols, stock, completed, selected, history, won;
   let pendingAnims = [];
