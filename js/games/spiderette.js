@@ -238,15 +238,18 @@ export default function init(api) {
     render();
   }
 
+  // per-suit search budget: higher suit counts are far harder to verify,
+  // so we try briefly then fall back to a fair deal (best effort)
+  // 1-suit deals verify quickly so we keep trying; multi-suit deals are
+  // far harder to verify, so we try only briefly then fall back to a fair
+  // deal rather than make the player wait for a guarantee we can't give
+  const NODE_CAP = { 1: 4000, 2: 9000, 4: 12000 }[suitCount] || 4000;
+  const TIME_BUDGET = { 1: 2500, 2: 900, 4: 500 }[suitCount] || 1500;
+
   async function start() {
     const token = ++genToken;
-    if (suitCount !== 1) {
-      // Ultra Hard / Insanity: fair random deals
-      applyLayout(randomLayout());
-      return;
-    }
-    // Spades modes: serve only solver-verified winnable deals, generated
-    // off the critical path (yielding between tries) so the UI never freezes.
+    // serve a solver-verified winnable deal when we can find one in budget,
+    // generated off the critical path (yielding) so the UI never freezes
     generating = true;
     cols = Array.from({ length: COLS }, () => []);
     stock = [];
@@ -258,10 +261,12 @@ export default function init(api) {
     setFooter();
     render();
     dealingEl.style.display = "grid";
+
     let layout = null;
-    for (let att = 0; att < 400 && !layout; att++) {
+    const t0 = performance.now();
+    while (!layout && performance.now() - t0 < TIME_BUDGET) {
       const cand = randomLayout();
-      if (spSolvable(cand.cols, cand.stock, 3000)) layout = cand;
+      if (spSolvable(cand.cols, cand.stock, NODE_CAP)) layout = cand;
       else await new Promise((r) => setTimeout(r));
       if (token !== genToken) return; // a newer game started — abandon this one
     }
