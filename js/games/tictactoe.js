@@ -178,7 +178,7 @@ function evaluate(b) {
   return b.every(Boolean) ? { winner: null, line: null } : null;
 }
 
-/* ---------- AI ---------- */
+/* ---------- computer opponent ---------- */
 function emptyCells(b) {
   return b.map((v, i) => (v ? null : i)).filter((i) => i != null);
 }

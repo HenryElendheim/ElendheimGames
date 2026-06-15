@@ -21,7 +21,7 @@ const STYLE = `
 .tap-tile.hit { background:linear-gradient(180deg,#26e0b8,#13a98b); box-shadow:0 0 14px rgba(24,194,156,.6); }
 `;
 
-const START = { EASY: 1.3, MEDIUM: 1.9, HARD: 2.7 };
+const START = { EASY: 0.8, MEDIUM: 1.15, HARD: 1.6 };
 
 export default function init(api) {
   const style = document.createElement("style");
@@ -124,7 +124,7 @@ export default function init(api) {
   function start() {
     cancel();
     measure();
-    scroll = VIS - 1;
+    scroll = VIS - 2; // first tile starts a row above the bottom, leaving room to react
     speed = start0;
     score = 0;
     over = false;

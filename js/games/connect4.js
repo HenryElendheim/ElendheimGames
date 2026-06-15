@@ -32,7 +32,7 @@ export default function init(api) {
   const isCpu = api.settings.mode !== "local";
   const diff = api.settings.difficulty || "MEDIUM";
   const HUMAN = "R";
-  const AI = "Y";
+  const YELLOW = "Y";
   const session = { R: 0, Y: 0 };
 
   let grid, current, over;
@@ -100,7 +100,7 @@ export default function init(api) {
 
   function drop(c) {
     if (over) return;
-    if (isCpu && current === AI) return;
+    if (isCpu && current === YELLOW) return;
     const r = landingRow(grid, c);
     if (r < 0) return;
     place(r, c, current);
@@ -115,12 +115,12 @@ export default function init(api) {
     if (grid[0].every(Boolean)) return finish(null, null);
     current = current === "R" ? "Y" : "R";
     setStatus();
-    if (isCpu && current === AI) {
+    if (isCpu && current === YELLOW) {
       boardEl.classList.add("locked");
       setTimeout(() => {
         boardEl.classList.remove("locked");
         const col = chooseMove(grid, diff);
-        place(landingRow(grid, col), col, AI);
+        place(landingRow(grid, col), col, YELLOW);
       }, 360);
     }
   }
@@ -210,20 +210,20 @@ function dropSim(g, c, who) {
   return null;
 }
 
-/* ---------- AI ---------- */
+/* ---------- computer opponent ---------- */
 function chooseMove(g, difficulty) {
   const cols = validCols(g);
-  const AI = "Y",
-    HU = "R";
+  const YELLOW = "Y",
+    RED = "R";
 
   // always grab an immediate win, always block an immediate loss
   for (const c of cols) {
-    const s = dropSim(g, c, AI);
-    if (winningLine(s.ng, s.r, c, AI)) return c;
+    const s = dropSim(g, c, YELLOW);
+    if (winningLine(s.ng, s.r, c, YELLOW)) return c;
   }
   for (const c of cols) {
-    const s = dropSim(g, c, HU);
-    if (winningLine(s.ng, s.r, c, HU)) return c;
+    const s = dropSim(g, c, RED);
+    if (winningLine(s.ng, s.r, c, RED)) return c;
   }
   if (difficulty === "EASY") return cols[(Math.random() * cols.length) | 0];
 
@@ -231,7 +231,7 @@ function chooseMove(g, difficulty) {
   let best = -Infinity,
     move = cols[(Math.random() * cols.length) | 0];
   for (const c of orderCols(cols)) {
-    const s = dropSim(g, c, AI);
+    const s = dropSim(g, c, YELLOW);
     const score = minimax(s.ng, depth - 1, -Infinity, Infinity, false);
     if (score > best) {
       best = score;
@@ -247,16 +247,16 @@ function orderCols(cols) {
 }
 
 function minimax(g, depth, alpha, beta, maximizing) {
-  const AI = "Y",
-    HU = "R";
+  const YELLOW = "Y",
+    RED = "R";
   const cols = validCols(g);
   if (cols.length === 0) return 0;
 
-  const who = maximizing ? AI : HU;
+  const who = maximizing ? YELLOW : RED;
   // terminal check: did the previous structure already win? evaluate via scan
   const term = anyWin(g);
-  if (term === AI) return 100000 + depth;
-  if (term === HU) return -100000 - depth;
+  if (term === YELLOW) return 100000 + depth;
+  if (term === RED) return -100000 - depth;
   if (depth === 0) return evaluate(g);
 
   if (maximizing) {
@@ -290,11 +290,11 @@ function anyWin(g) {
 }
 
 function evaluate(g) {
-  const AI = "Y",
-    HU = "R";
+  const YELLOW = "Y",
+    RED = "R";
   let score = 0;
   // centre preference
-  for (let r = 0; r < ROWS; r++) if (g[r][3] === AI) score += 3;
+  for (let r = 0; r < ROWS; r++) if (g[r][3] === YELLOW) score += 3;
 
   const windows = [];
   // collect all length-4 windows
@@ -315,8 +315,8 @@ function evaluate(g) {
       }
 
   for (const w of windows) {
-    const me = w.filter((x) => x === AI).length;
-    const op = w.filter((x) => x === HU).length;
+    const me = w.filter((x) => x === YELLOW).length;
+    const op = w.filter((x) => x === RED).length;
     const empty = w.filter((x) => !x).length;
     if (me && op) continue;
     if (me === 3 && empty === 1) score += 8;

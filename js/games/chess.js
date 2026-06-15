@@ -1,7 +1,7 @@
 /* ============================================================
    Chess — self-contained engine (no dependencies, fully offline).
    Full legal move generation: castling, en passant, promotion,
-   check / checkmate / stalemate. AI is alpha-beta negamax with
+   check / checkmate / stalemate. The computer plays via alpha-beta negamax search with
    material + piece-square evaluation; depth set by difficulty.
    Modes: cpu (you = White) | local (pass-and-play).
    Tracks: wins + streak (vs computer).
@@ -181,7 +181,7 @@ export default function init(api) {
     updateStatus();
     if (isCpu && state.turn === "b") {
       setTimeout(() => {
-        const m = chooseAIMove(state, depth);
+        const m = chooseComputerMove(state, depth);
         if (m) {
           state = applyMove(state, m);
           render();
@@ -449,7 +449,7 @@ function generateMoves(state, color) {
   });
 }
 
-/* ---------- AI ---------- */
+/* ---------- computer opponent ---------- */
 function evaluate(state) {
   let score = 0;
   for (let r = 0; r < 8; r++)
@@ -490,7 +490,7 @@ function negamax(state, depth, alpha, beta) {
   return best;
 }
 
-function chooseAIMove(state, depth) {
+function chooseComputerMove(state, depth) {
   const moves = generateMoves(state, state.turn);
   if (!moves.length) return null;
   if (depth <= 1 && Math.random() < 0.35) return moves[(Math.random() * moves.length) | 0];
