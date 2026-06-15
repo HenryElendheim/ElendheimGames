@@ -47,15 +47,17 @@ const GAME = {
      <rect x="40" y="46" width="20" height="20" rx="3" fill="#6aaa64"/>
      <rect x="66" y="46" width="20" height="20" rx="3" fill="#3a3b45"/>`,
   connect4:
-    `<rect x="14" y="18" width="72" height="68" rx="10" fill="#2b3550"/>
-     <circle cx="32" cy="38" r="9" fill="#15161a"/><circle cx="54" cy="38" r="9" fill="#f5a623"/><circle cx="76" cy="38" r="9" fill="#15161a"/>
-     <circle cx="32" cy="64" r="9" fill="#e23b2e"/><circle cx="54" cy="64" r="9" fill="#f5a623"/><circle cx="76" cy="64" r="9" fill="#e23b2e"/>`,
+    `<rect x="8" y="12" width="84" height="76" rx="13" fill="#2b3550"/>
+     <circle cx="28" cy="37" r="11" fill="#15161a"/><circle cx="50" cy="37" r="11" fill="#f5a623"/><circle cx="72" cy="37" r="11" fill="#15161a"/>
+     <circle cx="28" cy="63" r="11" fill="#e23b2e"/><circle cx="50" cy="63" r="11" fill="#f5a623"/><circle cx="72" cy="63" r="11" fill="#e23b2e"/>`,
   tictactoe:
-    `<g stroke="#cdd3e0" stroke-width="5" stroke-linecap="round">
-       <line x1="40" y1="20" x2="40" y2="80"/><line x1="60" y1="20" x2="60" y2="80"/>
-       <line x1="20" y1="40" x2="80" y2="40"/><line x1="20" y1="60" x2="80" y2="60"/></g>
-     <g stroke="#4fc3f7" stroke-width="5" stroke-linecap="round"><line x1="23" y1="23" x2="37" y2="37"/><line x1="37" y1="23" x2="23" y2="37"/></g>
-     <circle cx="70" cy="70" r="8" fill="none" stroke="#f5a623" stroke-width="5"/>`,
+    `<g stroke="#cdd3e0" stroke-width="6" stroke-linecap="round">
+       <line x1="38" y1="12" x2="38" y2="88"/><line x1="62" y1="12" x2="62" y2="88"/>
+       <line x1="12" y1="38" x2="88" y2="38"/><line x1="12" y1="62" x2="88" y2="62"/></g>
+     <g stroke="#4fc3f7" stroke-width="6" stroke-linecap="round">
+       <line x1="18" y1="18" x2="32" y2="32"/><line x1="32" y1="18" x2="18" y2="32"/>
+       <line x1="68" y1="68" x2="82" y2="82"/><line x1="82" y1="68" x2="68" y2="82"/></g>
+     <circle cx="50" cy="50" r="10" fill="none" stroke="#f5a623" stroke-width="6"/>`,
   "whack-a-mole":
     `<ellipse cx="50" cy="76" rx="34" ry="13" fill="#0d0e12"/>
      <circle cx="50" cy="50" r="24" fill="#9a6a3c"/>

@@ -44,8 +44,8 @@ const STYLE = `
 .ch-sq.light { background:#cdd3e0; } .ch-sq.dark { background:#6c7aa3; }
 .ch-sq.sel { background:#f5d36b !important; }
 .ch-sq.check { background:#ef5350 !important; }
-.ch-sq .pc { filter:drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
-.ch-sq .pc.w { color:#fbfbfb; } .ch-sq .pc.b { color:#1a1d24; }
+.ch-sq .pc { width:84%; height:84%; display:block; filter:drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
+.ch-sq .pc.w text { fill:#fbfbfb; } .ch-sq .pc.b text { fill:#1a1d24; }
 .ch-sq .dot { position:absolute; width:26%; height:26%; border-radius:50%; background:rgba(0,0,0,.35); }
 .ch-sq .ring { position:absolute; inset:6%; border-radius:50%; box-shadow:inset 0 0 0 4px rgba(0,0,0,.3); }
 .ch-promo { position:absolute; inset:0; background:rgba(0,0,0,.6); display:grid; place-items:center; z-index:5; }
@@ -108,10 +108,27 @@ export default function init(api) {
 
   function updateStatus() {
     if (over) return;
-    const side = state.turn === "w" ? "White" : "Black";
     const chk = inCheck(state, state.turn) ? " — Check!" : "";
-    if (isCpu && state.turn === "b") status.textContent = "Computer thinking…";
-    else status.textContent = `${side} to move${chk}`;
+    let text;
+    if (isCpu) text = state.turn === "w" ? "Your turn" : "Computer thinking…";
+    else text = state.turn === "w" ? "White's turn" : "Black's turn";
+    status.textContent = text + chk;
+  }
+
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  function pieceSvg(p) {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "0 0 100 100");
+    svg.setAttribute("class", "pc " + p.color);
+    const t = document.createElementNS(SVG_NS, "text");
+    t.setAttribute("x", "50");
+    t.setAttribute("y", "50");
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("dominant-baseline", "central");
+    t.setAttribute("font-size", "88");
+    t.textContent = GLYPH[p.type];
+    svg.append(t);
+    return svg;
   }
 
   function render() {
@@ -122,10 +139,7 @@ export default function init(api) {
         sq.replaceChildren();
         const p = state.board[r][c];
         if (p) {
-          const span = document.createElement("span");
-          span.className = "pc " + p.color;
-          span.textContent = GLYPH[p.type];
-          sq.append(span);
+          sq.append(pieceSvg(p));
         }
       }
     // king in check
