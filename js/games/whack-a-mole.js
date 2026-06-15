@@ -8,7 +8,7 @@
 const HOLES = 9; // 3x3
 
 const STYLE = `
-.wm-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:16px; padding:18px; }
+.wm-wrap { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:18px; position:relative; }
 .wm-timebar { width:min(86vw,360px); height:10px; border-radius:6px; background:var(--surface); overflow:hidden; }
 .wm-timebar > i { display:block; height:100%; background:var(--accent); width:100%; transition:width .25s linear; }
 .wm-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:3.5vw; width:min(86vw,360px); }
@@ -40,7 +40,23 @@ const STYLE = `
 .wm-shine { left:30%; top:22%; width:20%; height:16%; border-radius:50%; background:rgba(255,255,255,.28); }
 .wm-fuse { left:48%; top:-12%; width:7%; height:24%; background:#9a6a3c; border-radius:3px; transform:rotate(14deg); }
 .wm-spark { left:58%; top:-18%; width:13%; height:13%; border-radius:50%; background:#ffb400; box-shadow:0 0 9px #ffb400; }
-.wm-msg { font-size:18px; font-weight:700; color:var(--text-dim); min-height:22px; }
+/* floating "-3" that rises from where a bomb was tapped */
+.wm-float { position:absolute; transform:translate(-50%,-50%); font-size:23px; font-weight:800; color:#ff6a5a;
+  text-shadow:0 2px 6px rgba(0,0,0,.7); pointer-events:none; z-index:30; white-space:nowrap;
+  animation:wm-float .95s ease-out forwards; }
+@keyframes wm-float {
+  0%   { opacity:0; transform:translate(-50%,-40%) scale(.7); }
+  18%  { opacity:1; transform:translate(-50%,-62%) scale(1.12); }
+  100% { opacity:0; transform:translate(-50%,-155%) scale(1); } }
+/* full-screen Go!/Time! banners */
+.wm-banner { position:absolute; inset:0; display:grid; place-items:center; z-index:40; pointer-events:none;
+  background:radial-gradient(circle, rgba(13,14,18,.55), rgba(13,14,18,.32)); }
+.wm-banner b { font-size:64px; font-weight:800; color:#fff; letter-spacing:.04em; text-shadow:0 4px 18px rgba(0,0,0,.85); }
+.wm-banner.go { animation:wm-banner .7s ease-out forwards; }
+.wm-banner.time { animation:wm-banner 1s ease-out forwards; }
+@keyframes wm-banner { 0%{opacity:0;} 16%{opacity:1;} 70%{opacity:1;} 100%{opacity:0;} }
+.wm-banner b { animation:wm-bpop .55s ease-out; }
+@keyframes wm-bpop { 0%{transform:scale(.5);} 55%{transform:scale(1.12);} 100%{transform:scale(1);} }
 `;
 
 const DIFF = {
@@ -57,8 +73,6 @@ export default function init(api) {
   const cfg = DIFF[api.settings.difficulty] || DIFF.MEDIUM;
   let score, timeLeft, running, holes, timers, tickId;
 
-  const msg = document.createElement("div");
-  msg.className = "wm-msg";
   const bar = document.createElement("div");
   bar.className = "wm-timebar";
   const barFill = document.createElement("i");
@@ -67,7 +81,7 @@ export default function init(api) {
   grid.className = "wm-grid";
   const wrap = document.createElement("div");
   wrap.className = "wm-wrap";
-  wrap.append(msg, bar, grid);
+  wrap.append(bar, grid);
   api.root.append(wrap);
 
   holes = Array.from({ length: HOLES }, () => {
@@ -77,7 +91,7 @@ export default function init(api) {
     mole.className = "wm-mole";
     hole.append(mole);
     hole.state = { up: false, kind: null, mole };
-    hole.addEventListener("click", () => whack(hole));
+    hole.addEventListener("click", (e) => whack(hole, e));
     grid.append(hole);
     return hole;
   });
@@ -136,16 +150,38 @@ export default function init(api) {
     setTimeout(() => b.remove(), 360);
   }
 
-  function whack(h) {
+  // floating "-3" that rises from where the bomb was tapped (bombs only)
+  function floatText(x, y, text) {
+    const el = document.createElement("div");
+    el.className = "wm-float";
+    el.textContent = text;
+    const r = wrap.getBoundingClientRect();
+    el.style.left = x - r.left + "px";
+    el.style.top = y - r.top + "px";
+    wrap.append(el);
+    setTimeout(() => el.remove(), 1000);
+  }
+
+  // full-screen "Go!" / "Time!" banner
+  function banner(text, cls) {
+    const el = document.createElement("div");
+    el.className = "wm-banner " + cls;
+    const b = document.createElement("b");
+    b.textContent = text;
+    el.append(b);
+    wrap.append(el);
+    setTimeout(() => el.remove(), cls === "go" ? 750 : 1050);
+  }
+
+  function whack(h, e) {
     if (!running || !h.state.up) return;
     if (h.state.kind === "bomb") {
       score = Math.max(0, score - 3);
-      msg.textContent = "Ouch! -3";
+      floatText(e.clientX, e.clientY, "Ouch! -3");
       pills();
       setTimeout(() => hide(h), 90);
     } else {
       score += 1;
-      msg.textContent = "Bop!";
       h.classList.add("bonk");
       bonkBurst(h);
       pills();
@@ -160,7 +196,7 @@ export default function init(api) {
     running = true;
     timers = new Set();
     holes.forEach(hide);
-    msg.textContent = "Go!";
+    banner("Go!", "go");
     pills();
     barFill.style.width = "100%";
     tickId = setInterval(() => {
@@ -182,15 +218,18 @@ export default function init(api) {
     holes.forEach(hide);
     const { isRecord } = api.reportHighscore(score);
     pills();
-    msg.textContent = "Time!";
-    api.showModal({
-      title: isRecord ? "New best!" : "Time's up!",
-      statsRows: [
-        { label: "Score", value: score },
-        { label: "Best", value: api.refreshStats().highscore },
-      ],
-      onPrimary: start,
-    });
+    banner("Time!", "time");
+    // let "Time!" land before the results screen slides in
+    setTimeout(() => {
+      api.showModal({
+        title: isRecord ? "New best!" : "Time's up!",
+        statsRows: [
+          { label: "Score", value: score },
+          { label: "Best", value: api.refreshStats().highscore },
+        ],
+        onPrimary: start,
+      });
+    }, 700);
   }
 
   start();
