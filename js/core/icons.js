@@ -84,6 +84,14 @@ const UI = {
     `<rect x="18" y="50" width="15" height="30" rx="2" fill="currentColor"/>
      <rect x="42" y="32" width="15" height="48" rx="2" fill="currentColor"/>
      <rect x="66" y="42" width="15" height="38" rx="2" fill="currentColor"/>`,
+  gear:
+    `<g fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round">
+       <circle cx="50" cy="50" r="19"/>
+       <line x1="50" y1="13" x2="50" y2="23"/><line x1="50" y1="77" x2="50" y2="87"/>
+       <line x1="13" y1="50" x2="23" y2="50"/><line x1="77" y1="50" x2="87" y2="50"/>
+       <line x1="24" y1="24" x2="31" y2="31"/><line x1="69" y1="69" x2="76" y2="76"/>
+       <line x1="76" y1="24" x2="69" y2="31"/><line x1="31" y1="69" x2="24" y2="76"/></g>
+     <circle cx="50" cy="50" r="6" fill="currentColor"/>`,
 };
 
 export function gameIcon(id) {

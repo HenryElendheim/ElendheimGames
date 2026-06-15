@@ -24,8 +24,7 @@ export function renderHome(go) {
     "div",
     { class: "home-top" },
     el("div", { class: "wordmark" }, el("span", {}, "Elendheim "), el("span", { class: "em" }, "Games")),
-    el("div", { class: "chip" }, el("span", { class: "chip-ico gold" }, uiIcon("trophy")), String(g.totalWins)),
-    el("div", { class: "chip" }, el("span", { class: "chip-ico" }, uiIcon("plays")), String(g.totalPlays))
+    profileChip(go)
   );
 
   const grid = el(
@@ -186,4 +185,75 @@ function showStats(game) {
 
 function showHelp(game) {
   modal(game.title, [el("p", {}, game.desc)]);
+}
+
+/* ---- player profile + settings ---- */
+const AVATAR_COLORS = ["#f5a623", "#8b5cf6", "#18c29c", "#ef5350", "#4fc3f7", "#ff4081", "#7c4dff", "#6aaa64"];
+
+function initials(name) {
+  const parts = (name || "Player").trim().split(/\s+/).filter(Boolean);
+  const s = parts.length >= 2 ? parts[0][0] + parts[1][0] : (parts[0] || "P").slice(0, 2);
+  return s.toUpperCase();
+}
+
+function profileChip(go) {
+  const p = Storage.getProfile();
+  const avatar = el("div", { class: "avatar", style: { background: p.color } }, initials(p.name));
+  return el("button", { class: "chip profile", onClick: () => openSettings(go) }, avatar, el("span", {}, p.name || "Player"));
+}
+
+function openSettings(go) {
+  Storage.getDeviceId(); // ensure the anonymous id exists from the start
+  const p = Storage.getProfile();
+  const g = Storage.getGlobal(GAME_IDS);
+  let color = p.color;
+
+  const preview = el("div", { class: "avatar", style: { background: color } }, initials(p.name));
+  const nameInput = el("input", {
+    type: "text",
+    maxlength: "16",
+    value: p.name === "Player" ? "" : p.name,
+    placeholder: "Your name",
+  });
+  nameInput.addEventListener("input", () => (preview.textContent = initials(nameInput.value || "Player")));
+
+  const swatches = el(
+    "div",
+    { class: "swatches" },
+    ...AVATAR_COLORS.map((c) => {
+      const sw = el("div", { class: "swatch" + (c === color ? " on" : ""), style: { background: c } });
+      sw.addEventListener("click", () => {
+        color = c;
+        preview.style.background = c;
+        swatches.querySelectorAll(".swatch").forEach((x) => x.classList.toggle("on", x === sw));
+      });
+      return sw;
+    })
+  );
+
+  const ms = (v, label) => el("div", { class: "ms" }, el("b", {}, String(v)), el("span", {}, label));
+  const close = () => back.remove();
+  const save = () => {
+    Storage.setProfile({ name: nameInput.value.trim().slice(0, 16) || "Player", color });
+    close();
+    go("#/");
+  };
+
+  const back = el(
+    "div",
+    { class: "modal-back", onClick: (e) => e.target === back && close() },
+    el(
+      "div",
+      { class: "modal settings" },
+      el("h2", {}, "Settings"),
+      preview,
+      el("div", { class: "field" }, el("label", {}, "Name"), nameInput),
+      el("div", { class: "field" }, el("label", {}, "Avatar colour"), swatches),
+      el("div", { class: "totals" }, ms(g.totalWins, "Wins"), ms(g.totalPlays, "Played")),
+      el("div", { class: "soon" }, "Cloud sync & leaderboards — coming soon"),
+      el("button", { class: "btn-play", onClick: save }, "Done")
+    )
+  );
+  document.body.append(back);
+  nameInput.focus();
 }

@@ -88,6 +88,26 @@ export const Storage = {
     write(`pref:${gameId}:${key}`, value);
   },
 
+  /* ---- player profile (local now; syncs to the account later) ---- */
+  getProfile() {
+    return { name: "Player", color: "#f5a623", ...read("profile", {}) };
+  },
+  setProfile(patch) {
+    const next = { ...this.getProfile(), ...patch };
+    write("profile", next);
+    return next;
+  },
+
+  /** Stable anonymous id for this device — becomes the account link later. */
+  getDeviceId() {
+    let id = read("deviceId", null);
+    if (!id) {
+      id = (crypto.randomUUID && crypto.randomUUID()) || `dev-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      write("deviceId", id);
+    }
+    return id;
+  },
+
   /* ---- global aggregate (for the home-screen chip) ---- */
   getGlobal(gameIds) {
     let totalWins = 0,
