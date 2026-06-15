@@ -20,7 +20,11 @@ const STYLE = `
 .bj-card.back { background:repeating-linear-gradient(45deg,#5b6bd6,#5b6bd6 6px,#4453b0 6px,#4453b0 12px); }
 .bj-total { font-size:20px; font-weight:800; }
 .bj-msg { text-align:center; font-size:20px; font-weight:800; min-height:26px; }
+.bj-msg.pop { animation:bj-pop .45s ease; }
+.bj-card.flip { animation:bj-flip .4s ease; }
 @keyframes bj-deal { from{transform:translateY(-14px);opacity:.3;} to{transform:none;opacity:1;} }
+@keyframes bj-flip { from{transform:rotateY(90deg);} to{transform:rotateY(0);} }
+@keyframes bj-pop { 0%{transform:scale(.6);opacity:0;} 60%{transform:scale(1.15);} 100%{transform:scale(1);opacity:1;} }
 `;
 
 export default function init(api) {
@@ -28,7 +32,7 @@ export default function init(api) {
   style.textContent = STYLE;
   document.head.append(style);
 
-  let deck, player, dealer, phase, revealed;
+  let deck, player, dealer, phase, revealed, flipReveal;
 
   const dealerArea = area("Dealer");
   const msg = document.createElement("div");
@@ -103,6 +107,11 @@ export default function init(api) {
     if (revealed) {
       dealerArea.hand.replaceChildren(...dealer.map(cardEl));
       dealerArea.total.textContent = value(dealer);
+      if (flipReveal) {
+        const hole = dealerArea.hand.children[1];
+        if (hole) hole.classList.add("flip");
+        flipReveal = false;
+      }
     } else {
       const back = document.createElement("div");
       back.className = "bj-card back";
@@ -124,6 +133,7 @@ export default function init(api) {
     dealer = [deck.pop(), deck.pop()];
     phase = "player";
     revealed = false;
+    flipReveal = false;
     msg.textContent = "";
     pills();
     setFooterEnabled(true);
@@ -141,6 +151,7 @@ export default function init(api) {
   function stand() {
     if (phase !== "player") return;
     phase = "dealer";
+    flipReveal = true; // flip the hole card as it's revealed
     revealed = true;
     setFooterEnabled(false);
     render();
@@ -156,6 +167,7 @@ export default function init(api) {
 
   function settle() {
     phase = "done";
+    if (!revealed) flipReveal = true; // reveal-on-bust also flips the hole card
     revealed = true;
     setFooterEnabled(false);
     render();
@@ -179,6 +191,9 @@ export default function init(api) {
       win = null;
     }
     msg.textContent = result;
+    msg.classList.remove("pop");
+    void msg.offsetWidth; // restart the pulse animation
+    msg.classList.add("pop");
     if (win === true) api.reportWin();
     else if (win === false) api.reportLoss();
     pills();
