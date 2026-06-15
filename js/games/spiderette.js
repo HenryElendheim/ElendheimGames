@@ -238,18 +238,21 @@ export default function init(api) {
     render();
   }
 
-  // per-suit search budget: higher suit counts are far harder to verify,
-  // so we try briefly then fall back to a fair deal (best effort)
-  // 1-suit deals verify quickly so we keep trying; multi-suit deals are
-  // far harder to verify, so we try only briefly then fall back to a fair
-  // deal rather than make the player wait for a guarantee we can't give
-  const NODE_CAP = { 1: 4000, 2: 9000, 4: 12000 }[suitCount] || 4000;
-  const TIME_BUDGET = { 1: 2500, 2: 900, 4: 500 }[suitCount] || 1500;
+  // Only 1-suit (spades) deals can be verified quickly enough to guarantee
+  // winnability; multi-suit deals are infeasible to verify in reasonable
+  // time, so they deal instantly as fair random deals.
+  const NODE_CAP = 4000;
+  const TIME_BUDGET = 2500;
 
   async function start() {
     const token = ++genToken;
-    // serve a solver-verified winnable deal when we can find one in budget,
-    // generated off the critical path (yielding) so the UI never freezes
+    if (suitCount !== 1) {
+      // Ultra Hard / Insanity: deal a fair random layout immediately
+      applyLayout(randomLayout());
+      return;
+    }
+    // Spades modes: serve a solver-verified winnable deal, generated off the
+    // critical path (yielding between tries) so the UI never freezes.
     generating = true;
     cols = Array.from({ length: COLS }, () => []);
     stock = [];
