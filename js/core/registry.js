@@ -11,7 +11,7 @@
 export const GAMES = [
   {
     id: "fruit-slasher",
-    title: "Fruit Slasher",
+    title: "Fruit vs Sword",
     accent: "#ef5350",
     desc: "Swipe to slice the fruit — but don't let three slip past you, and never hit a bomb!",
     scoreType: "highscore",
@@ -42,7 +42,7 @@ export const GAMES = [
   },
   {
     id: "wordle",
-    title: "Word Quest",
+    title: "Word Guess",
     accent: "#6aaa64",
     desc: "Six guesses to find the hidden five-letter word. Keep your streak alive!",
     scoreType: "wins",
@@ -102,7 +102,7 @@ export const GAMES = [
   },
   {
     id: "tetris",
-    title: "Tetris",
+    title: "Blockfall",
     accent: "#7c4dff",
     desc: "Stack the falling blocks, clear full lines, and chase the high score.",
     scoreType: "highscore",
@@ -112,7 +112,7 @@ export const GAMES = [
   },
   {
     id: "block-blast",
-    title: "Block Blast",
+    title: "Block Rows",
     accent: "#ff4081",
     desc: "Drag blocks onto the grid and clear rows and columns to score big.",
     scoreType: "highscore",

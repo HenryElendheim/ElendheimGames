@@ -85,6 +85,12 @@ export function renderDetail(id, go) {
   /* body sections */
   const body = el("div", { class: "detail-body" });
 
+  // difficulty only makes sense against the computer — hide it for "vs Friend"
+  let diffEl = null;
+  const updateDiffVisibility = () => {
+    if (diffEl) diffEl.style.display = mode === "local" ? "none" : "";
+  };
+
   // mode toggle
   if (game.modes) {
     const labels = { cpu: "vs Computer", local: "vs Friend" };
@@ -95,6 +101,7 @@ export function renderDetail(id, go) {
         mode = m;
         Storage.setPref(id, "mode", mode);
         btns.forEach((x) => x.el.classList.toggle("active", x.m === mode));
+        updateDiffVisibility();
       });
       return { el: b, m };
     });
@@ -130,7 +137,9 @@ export function renderDetail(id, go) {
       { class: "diff-ticks" },
       ...steps.map((s) => el("span", {}, s))
     );
-    body.append(el("div", { class: "diff" }, label, slider, ticks));
+    diffEl = el("div", { class: "diff" }, label, slider, ticks);
+    body.append(diffEl);
+    updateDiffVisibility();
   }
 
   // bottom action row

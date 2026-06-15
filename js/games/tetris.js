@@ -1,5 +1,5 @@
 /* ============================================================
-   Tetris
+   Blockfall — falling-block puzzle
    Controls: footer buttons (◀ ⟳ ▶ ⤓) plus tap-to-rotate and
    swipe left/right/down on the board.
    Tracks: high score
@@ -35,7 +35,7 @@ export default function init(api) {
   style.textContent = STYLE;
   document.head.append(style);
 
-  let board, piece, px, py, score, lines, level, over, dropId;
+  let board, piece, px, py, score, lines, level, over, dropId, dropping;
 
   const boardEl = document.createElement("div");
   boardEl.className = "tt-board";
@@ -56,8 +56,23 @@ export default function init(api) {
     { icon: "◀", label: "Left", onClick: () => move(-1) },
     { icon: "⟳", label: "Rotate", onClick: rotate, accent: true },
     { icon: "▶", label: "Right", onClick: () => move(1) },
-    { icon: "⤓", label: "Drop", onClick: hardDrop },
+    { icon: "⤓", label: "Drop", onClick: fastDrop },
   ]);
+
+  // keyboard: A/D or arrows = move, W/R/Up = rotate, S/Down = soft step,
+  // Space = fast drop (piece keeps falling fast but can still be moved)
+  const onKey = (e) => {
+    if (over) return;
+    const k = e.key.toLowerCase();
+    if (k === "a" || e.key === "ArrowLeft") move(-1);
+    else if (k === "d" || e.key === "ArrowRight") move(1);
+    else if (k === "w" || k === "r" || e.key === "ArrowUp") rotate();
+    else if (k === "s" || e.key === "ArrowDown") softStep();
+    else if (e.key === " " || e.code === "Space") fastDrop();
+    else return;
+    e.preventDefault();
+  };
+  window.addEventListener("keydown", onKey);
 
   // swipe / tap on the board
   let sx = 0, sy = 0, moved = false;
@@ -66,7 +81,7 @@ export default function init(api) {
     const dx = e.clientX - sx, dy = e.clientY - sy;
     if (Math.abs(dx) < 16 && Math.abs(dy) < 16) { rotate(); return; }
     if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 1 : -1);
-    else if (dy > 24) hardDrop();
+    else if (dy > 24) fastDrop();
   });
 
   function pills() {
@@ -93,8 +108,10 @@ export default function init(api) {
 
   function lock() {
     for (const [x, y] of shape(piece, px, py)) if (y >= 0) board[y][x] = piece.color;
+    dropping = false; // fast-drop only lasts for the current piece
     clearLines();
     spawn();
+    restartGravity();
   }
 
   function clearLines() {
@@ -146,11 +163,18 @@ export default function init(api) {
     }
   }
 
-  function hardDrop() {
+  function softStep() {
     if (over) return;
-    while (!collides(shape(piece, px, py + 1))) py++;
-    lock();
-    draw();
+    if (!collides(shape(piece, px, py + 1))) {
+      py++;
+      draw();
+    }
+  }
+
+  function fastDrop() {
+    if (over) return;
+    dropping = true; // accelerate gravity but keep the piece movable
+    restartGravity();
   }
 
   function draw() {
@@ -172,7 +196,8 @@ export default function init(api) {
 
   function restartGravity() {
     if (dropId) clearInterval(dropId);
-    dropId = setInterval(step, SPEED(level));
+    if (over) return;
+    dropId = setInterval(step, dropping ? 45 : SPEED(level));
   }
 
   function start() {
@@ -182,6 +207,7 @@ export default function init(api) {
     lines = 0;
     level = 0;
     over = false;
+    dropping = false;
     pills();
     spawn();
     restartGravity();
@@ -207,6 +233,7 @@ export default function init(api) {
   return {
     destroy() {
       if (dropId) clearInterval(dropId);
+      window.removeEventListener("keydown", onKey);
       style.remove();
     },
   };
