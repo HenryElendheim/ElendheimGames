@@ -13,6 +13,17 @@
 
 export const GAMES = [
   {
+    id: "elendheim-tcg",
+    title: "Elendheim TCG",
+    accent: "#ffb83d",
+    desc: "Collect cards, build an 8-card deck, and duel the computer. Open packs with Heimers and level up your cards.",
+    scoreType: "wins",
+    difficulty: null,
+    modes: null,
+    since: "2026-06-15",
+    loader: () => import("../games/elendheim-tcg.js"),
+  },
+  {
     id: "fruit-slasher",
     title: "Fruit vs Sword",
     accent: "#ef5350",

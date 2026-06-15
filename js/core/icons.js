@@ -14,6 +14,10 @@ function make(inner, vb = "0 0 100 100") {
 }
 
 const GAME = {
+  "elendheim-tcg":
+    `<rect x="20" y="26" width="42" height="56" rx="6" fill="#8b5cf6" transform="rotate(-9 41 54)"/>
+     <rect x="40" y="20" width="44" height="58" rx="7" fill="#2b2540" stroke="#b9a6ff" stroke-width="2"/>
+     <path d="M62 32l5 12 13 1-10 8 3 13-11-7-11 7 3-13-10-8 13-1z" fill="#ffd75e"/>`,
   "fruit-slasher":
     `<circle cx="48" cy="57" r="29" fill="#e23b2e"/>
      <circle cx="59" cy="49" r="7" fill="#ff8174"/>

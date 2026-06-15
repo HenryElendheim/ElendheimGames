@@ -1,7 +1,7 @@
 /* Service worker — cache-first shell so the library works offline.
    Bump CACHE when you ship changes so clients pick them up. */
 
-const CACHE = "elendheim-games-v36";
+const CACHE = "elendheim-games-v37";
 const ASSETS = [
   "./",
   "index.html",
@@ -28,6 +28,7 @@ const ASSETS = [
   "js/games/spiderette.js",
   "js/games/solitaire.js",
   "js/games/kings-corners.js",
+  "js/games/elendheim-tcg.js",
   "js/games/fruit-slasher.js",
   "js/games/chess.js",
   "manifest.json",
