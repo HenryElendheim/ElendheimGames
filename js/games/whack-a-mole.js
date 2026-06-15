@@ -15,9 +15,21 @@ const STYLE = `
 .wm-hole { aspect-ratio:1; border-radius:50%; background:#0f1014; position:relative; overflow:hidden;
   box-shadow:inset 0 8px 18px rgba(0,0,0,.6); border:none; }
 .wm-mole { position:absolute; inset:16% 16% -4%; border-radius:48% 48% 42% 42%;
-  transform:translateY(112%); transition:transform .12s ease; }
+  transform:translateY(150%); transition:transform .13s cubic-bezier(.34,1.45,.6,1); }
 .wm-hole.up .wm-mole { transform:translateY(0); }
-.wm-hole.bonk .wm-mole { transform:translateY(10%) scale(.85); filter:brightness(1.5); }
+.wm-hole.bonk .wm-mole { animation:wm-squish .22s ease forwards; }
+@keyframes wm-squish {
+  0%   { transform:translateY(0) scaleX(1) scaleY(1); filter:brightness(1); }
+  35%  { transform:translateY(20%) scaleX(1.34) scaleY(.55); filter:brightness(2); }
+  100% { transform:translateY(150%) scaleX(1) scaleY(1); filter:brightness(1); } }
+.wm-burst { position:absolute; inset:0; pointer-events:none; z-index:5; }
+.wm-ring { position:absolute; left:50%; top:44%; width:42%; height:42%; margin:-21% 0 0 -21%; border-radius:50%;
+  border:4px solid #ffe08a; animation:wm-ring .34s ease-out forwards; }
+@keyframes wm-ring { 0%{transform:scale(.3);opacity:1;} 100%{transform:scale(2.3);opacity:0;} }
+.wm-spk { position:absolute; left:50%; top:44%; width:10%; height:10%; margin:-5% 0 0 -5%; border-radius:50%;
+  background:#ffd75e; animation:wm-spk .36s ease-out forwards; }
+@keyframes wm-spk { 0%{transform:rotate(var(--a)) translateY(0) scale(1);opacity:1;}
+  100%{transform:rotate(var(--a)) translateY(-160%) scale(.2);opacity:0;} }
 .wm-mole.mole { background:radial-gradient(circle at 50% 30%, #b5824e, #6f4a28); }
 .wm-mole.bomb { background:radial-gradient(circle at 38% 30%, #4a4a55, #14141a); }
 .wm-mole i { position:absolute; display:block; }
@@ -114,18 +126,31 @@ export default function init(api) {
     h.classList.remove("up", "bonk");
   }
 
+  function bonkBurst(h) {
+    const b = document.createElement("div");
+    b.className = "wm-burst";
+    b.innerHTML =
+      '<span class="wm-ring"></span>' +
+      Array.from({ length: 6 }, (_, i) => `<span class="wm-spk" style="--a:${i * 60}deg"></span>`).join("");
+    h.append(b);
+    setTimeout(() => b.remove(), 360);
+  }
+
   function whack(h) {
     if (!running || !h.state.up) return;
     if (h.state.kind === "bomb") {
       score = Math.max(0, score - 3);
       msg.textContent = "Ouch! -3";
+      pills();
+      setTimeout(() => hide(h), 90);
     } else {
       score += 1;
       msg.textContent = "Bop!";
       h.classList.add("bonk");
+      bonkBurst(h);
+      pills();
+      setTimeout(() => hide(h), 200); // let the squish animation play
     }
-    pills();
-    setTimeout(() => hide(h), 90);
   }
 
   function start() {

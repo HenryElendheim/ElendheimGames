@@ -53,14 +53,14 @@ export default function init(api) {
   msg.className = "kc-msg";
   const board = document.createElement("div");
   board.className = "kc-board";
-  const cpuTag = document.createElement("div");
-  cpuTag.className = "kc-tag";
+  const cpuHandEl = document.createElement("div");
+  cpuHandEl.className = "kc-hand kc-cpuhand";
   const handEl = document.createElement("div");
   handEl.className = "kc-hand";
   const wrap = document.createElement("div");
   wrap.className = "kc-wrap";
   wrap.style.setProperty("--kc-glow", glow);
-  wrap.append(cpuTag, msg, board, document.createElement("div"), handEl);
+  wrap.append(cpuHandEl, msg, board, document.createElement("div"), handEl);
   api.root.append(wrap);
 
   api.onRestart(start);
@@ -158,7 +158,14 @@ export default function init(api) {
         return el;
       })
     );
-    cpuTag.textContent = `Computer · ${cpuHand.length} card${cpuHand.length === 1 ? "" : "s"}`;
+    cpuHandEl.replaceChildren(
+      ...cpuHand.map((_, i) => {
+        const el = document.createElement("div");
+        el.className = "kc-card back";
+        el.style.zIndex = i;
+        return el;
+      })
+    );
     api.setStats({ left: { label: "Your cards", value: hand.length }, right: { label: "CPU cards", value: cpuHand.length } });
   }
 

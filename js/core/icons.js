@@ -52,10 +52,10 @@ const GAME = {
      <circle cx="32" cy="64" r="9" fill="#e23b2e"/><circle cx="54" cy="64" r="9" fill="#f5a623"/><circle cx="76" cy="64" r="9" fill="#e23b2e"/>`,
   tictactoe:
     `<g stroke="#cdd3e0" stroke-width="5" stroke-linecap="round">
-       <line x1="42" y1="16" x2="42" y2="84"/><line x1="64" y1="16" x2="64" y2="84"/>
-       <line x1="16" y1="40" x2="86" y2="40"/><line x1="16" y1="62" x2="86" y2="62"/></g>
-     <g stroke="#4fc3f7" stroke-width="5" stroke-linecap="round"><line x1="22" y1="22" x2="34" y2="34"/><line x1="34" y1="22" x2="22" y2="34"/></g>
-     <circle cx="75" cy="73" r="7" fill="none" stroke="#f5a623" stroke-width="5"/>`,
+       <line x1="40" y1="20" x2="40" y2="80"/><line x1="60" y1="20" x2="60" y2="80"/>
+       <line x1="20" y1="40" x2="80" y2="40"/><line x1="20" y1="60" x2="80" y2="60"/></g>
+     <g stroke="#4fc3f7" stroke-width="5" stroke-linecap="round"><line x1="23" y1="23" x2="37" y2="37"/><line x1="37" y1="23" x2="23" y2="37"/></g>
+     <circle cx="70" cy="70" r="8" fill="none" stroke="#f5a623" stroke-width="5"/>`,
   "whack-a-mole":
     `<ellipse cx="50" cy="76" rx="34" ry="13" fill="#0d0e12"/>
      <circle cx="50" cy="50" r="24" fill="#9a6a3c"/>
@@ -68,8 +68,14 @@ const GAME = {
      <text x="50" y="44" font-size="15" font-weight="800" fill="#1a1a1a" font-family="sans-serif">A</text>
      <text x="55" y="72" font-size="24" fill="#1a1a1a" font-family="sans-serif">&#9824;</text>`,
   chess:
-    `<path d="M50 22a10 10 0 0 1 6 18c6 4 6 12 4 18H40c-2-6-2-14 4-18a10 10 0 0 1 6-18Z" fill="#dfe4ee"/>
-     <path d="M28 84c3-11 14-13 22-13s19 2 22 13Z" fill="#dfe4ee"/>`,
+    `<g fill="#e9edf4">
+       <path d="M33 24C41 26 42 33 38 38C41 50 44 58 45 66L47 66L47 80L19 80L19 66L21 66C22 58 25 50 28 38C24 33 25 26 33 24Z"/>
+       <path d="M30.5 8H35.5V12.5H40V17.5H35.5V22H30.5V17.5H26V12.5H30.5Z"/>
+     </g>
+     <g fill="#20242e" stroke="#c4cad8" stroke-width="2.5" stroke-linejoin="round">
+       <path d="M67 24C75 26 76 33 72 38C75 50 78 58 79 66L81 66L81 80L53 80L53 66L55 66C56 58 59 50 62 38C58 33 59 26 67 24Z"/>
+       <path d="M64.5 8H69.5V12.5H74V17.5H69.5V22H64.5V17.5H60V12.5H64.5Z"/>
+     </g>`,
   tetris:
     `<g stroke="#15161a" stroke-width="2">
        <rect x="26" y="28" width="16" height="16" fill="#7c4dff"/><rect x="42" y="28" width="16" height="16" fill="#7c4dff"/>
