@@ -5,7 +5,7 @@
 import { el, glow } from "./dom.js";
 import { Storage } from "./storage.js";
 import { GAMES, GAME_IDS, getGame, isNew, homeOrder } from "./registry.js";
-import { gameIcon, uiIcon } from "./icons.js";
+import { gameIcon, uiIcon, backIcon } from "./icons.js";
 import { fetchLeaderboard } from "./cloud.js";
 
 /* Short summary line for a game's best result, shown on its tile. */
@@ -75,7 +75,7 @@ export function renderDetail(id, go) {
     el(
       "div",
       { class: "detail-top" },
-      el("button", { class: "icon-btn", onClick: () => go("#/") }, "‹"),
+      el("button", { class: "icon-btn", onClick: () => go("#/") }, backIcon()),
       star
     ),
     el("div", { class: "detail-title" }, game.title),

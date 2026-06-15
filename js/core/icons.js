@@ -133,3 +133,11 @@ export function gameIcon(id, image) {
 export function uiIcon(name) {
   return make(UI[name] || "");
 }
+
+/* The standard back chevron — bold, centred, used by every back button. */
+export function backIcon() {
+  return make(
+    `<path d="M14 5L8 12l6 7" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>`,
+    "0 0 24 24"
+  );
+}

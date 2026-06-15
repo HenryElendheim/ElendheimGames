@@ -8,9 +8,10 @@
 
 import { el, toast, glow } from "./dom.js";
 import { Storage } from "./storage.js";
+import { backIcon } from "./icons.js";
 
 export function createGameShell(game, settings, { onExit }) {
-  const backBtn = el("button", { class: "icon-btn", onClick: () => onExit() }, "‹");
+  const backBtn = el("button", { class: "icon-btn", onClick: () => onExit() }, backIcon());
   const restartBtn = el("button", { class: "icon-btn" }, "↻");
 
   const mkPill = (teal) =>
