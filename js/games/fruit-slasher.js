@@ -113,6 +113,7 @@ export default function init(api) {
   }
   function up() {
     slicing = false;
+    if (over) return; // the run already ended — don't change the score afterwards
     if (combo >= 3) {
       score += combo; // combo bonus
       popup(W / 2, H * 0.3, `COMBO x${combo}! +${combo}`, "#f5a623");
