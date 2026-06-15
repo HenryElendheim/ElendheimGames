@@ -33,7 +33,10 @@ create table if not exists public.game_stats (
 
 -- 3) LEADERBOARD ---------------------------------------------
 -- Public, read-only view joining stats to profile names.
-create or replace view public.leaderboard as
+-- security_invoker = on makes the view run with the *querying* user's
+-- permissions and RLS (not the creator's), which is the safe default.
+create or replace view public.leaderboard
+  with (security_invoker = on) as
   select s.game_id,
          s.user_id,
          p.name,
