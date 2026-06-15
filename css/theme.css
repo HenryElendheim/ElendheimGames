@@ -365,6 +365,16 @@ input, textarea { -webkit-user-select: text; user-select: text; }
   flex: 1; display: grid; place-items: center; text-align: center;
   color: var(--text-dim); padding: 40px;
 }
+/* leaderboard (inside stats modal) */
+.lb-title { margin: 18px 0 10px; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); }
+.lb { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; }
+.lb-msg { color: var(--text-dim); font-weight: 600; padding: 10px 0; }
+.lb-row { display: flex; align-items: center; gap: 10px; background: var(--bg-2); border-radius: 12px; padding: 7px 12px; }
+.lb-rank { width: 18px; text-align: center; font-weight: 800; color: var(--text-dim); }
+.lb-av { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #15161a; flex: 0 0 auto; }
+.lb-name { flex: 1 1 auto; text-align: left; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-val { font-weight: 800; }
+
 .placeholder .ph-emoji { margin-bottom: 12px; }
 .placeholder .ph-emoji svg { width: 80px; height: 80px; }
 .placeholder b { color: var(--text); font-size: 20px; }

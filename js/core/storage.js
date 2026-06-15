@@ -34,14 +34,44 @@ const DEFAULT_STATS = {
   plays: 0,
 };
 
+/* listeners notified after any stat/profile write, so a sync layer can
+   push changes to the cloud without the game code knowing about it. */
+const listeners = [];
+function emit(type, id) {
+  for (const cb of listeners) {
+    try {
+      cb(type, id);
+    } catch {
+      /* a broken listener must never break gameplay */
+    }
+  }
+}
+
 export const Storage = {
+  onChange(cb) {
+    listeners.push(cb);
+  },
   /* ---- per-game stats ---- */
   getStats(gameId) {
     return { ...DEFAULT_STATS, ...read(`stats:${gameId}`, {}) };
   },
   _save(gameId, stats) {
     write(`stats:${gameId}`, stats);
+    emit("stats", gameId);
     return stats;
+  },
+
+  /** Merge cloud stats into local, keeping the best of each (no emit). */
+  mergeStats(gameId, incoming) {
+    const s = this.getStats(gameId);
+    s.highscore = Math.max(s.highscore, incoming.high_score || 0);
+    s.wins = Math.max(s.wins, incoming.wins || 0);
+    s.bestStreak = Math.max(s.bestStreak, incoming.best_streak || 0);
+    s.plays = Math.max(s.plays, incoming.plays || 0);
+    if (incoming.best_time_ms != null)
+      s.bestTime = s.bestTime == null ? incoming.best_time_ms : Math.min(s.bestTime, incoming.best_time_ms);
+    write(`stats:${gameId}`, s);
+    return s;
   },
 
   /** Record a high-score run. Returns { stats, isRecord }. */
@@ -95,6 +125,7 @@ export const Storage = {
   setProfile(patch) {
     const next = { ...this.getProfile(), ...patch };
     write("profile", next);
+    emit("profile");
     return next;
   },
 

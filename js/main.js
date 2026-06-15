@@ -10,6 +10,7 @@ import { renderHome, renderDetail } from "./core/screens.js";
 import { createGameShell } from "./core/shell.js";
 import { getGame } from "./core/registry.js";
 import { gameIcon } from "./core/icons.js";
+import * as Sync from "./core/sync.js";
 
 const app = document.getElementById("app");
 let activeGame = null; // { destroy } for the currently-running game
@@ -109,6 +110,9 @@ function localStoragePref(id, key, fallback) {
 
 window.addEventListener("hashchange", render);
 render();
+
+// kick off cloud sign-in + sync in the background (never blocks the UI)
+Sync.init();
 
 /* ---- PWA: register service worker (installable + offline) ---- */
 if ("serviceWorker" in navigator) {

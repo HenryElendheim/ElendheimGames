@@ -6,6 +6,7 @@ import { el, glow } from "./dom.js";
 import { Storage } from "./storage.js";
 import { GAMES, GAME_IDS, getGame } from "./registry.js";
 import { gameIcon, uiIcon } from "./icons.js";
+import { fetchLeaderboard } from "./cloud.js";
 
 /* Short summary line for a game's best result, shown on its tile. */
 function tileStatText(game) {
@@ -169,17 +170,39 @@ function showStats(game) {
     rows.push(["Best", s.bestTime != null ? (s.bestTime / 1000).toFixed(1) + "s" : "—"]);
   rows.push(["Games Played", s.plays]);
 
-  modal(
-    game.title,
-    [
+  const lb = el("div", { class: "lb" }, el("div", { class: "lb-msg" }, "Loading leaderboard…"));
+  modal(game.title, [
+    el(
+      "div",
+      { class: "modal-stats", style: { flexWrap: "wrap" } },
+      ...rows.map(([label, value]) => el("div", { class: "ms" }, el("b", {}, String(value)), el("span", {}, label)))
+    ),
+    el("h3", { class: "lb-title" }, "Leaderboard"),
+    lb,
+  ]);
+  fetchLeaderboard(game.id, game.scoreType)
+    .then((data) => renderLeaderboard(lb, data, game.scoreType))
+    .catch(() => lb.replaceChildren(el("div", { class: "lb-msg" }, "Leaderboard unavailable right now.")));
+}
+
+function renderLeaderboard(container, rows, scoreType) {
+  if (!rows || !rows.length) {
+    container.replaceChildren(el("div", { class: "lb-msg" }, "No scores yet — be the first!"));
+    return;
+  }
+  const val = (r) =>
+    scoreType === "wins" ? r.wins : scoreType === "besttime" ? (r.best_time_ms / 1000).toFixed(1) + "s" : r.high_score;
+  container.replaceChildren(
+    ...rows.map((r, i) =>
       el(
         "div",
-        { class: "modal-stats", style: { flexWrap: "wrap" } },
-        ...rows.map(([label, value]) =>
-          el("div", { class: "ms" }, el("b", {}, String(value)), el("span", {}, label))
-        )
-      ),
-    ]
+        { class: "lb-row" },
+        el("span", { class: "lb-rank" }, String(i + 1)),
+        el("span", { class: "lb-av", style: { background: r.avatar_color || "#f5a623" } }, initials(r.name)),
+        el("span", { class: "lb-name" }, r.name || "Player"),
+        el("span", { class: "lb-val" }, String(val(r)))
+      )
+    )
   );
 }
 

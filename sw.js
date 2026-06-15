@@ -1,7 +1,7 @@
 /* Service worker — cache-first shell so the library works offline.
    Bump CACHE when you ship changes so clients pick them up. */
 
-const CACHE = "elendheim-games-v10";
+const CACHE = "elendheim-games-v12";
 const ASSETS = [
   "./",
   "index.html",
@@ -11,6 +11,9 @@ const ASSETS = [
   "js/core/storage.js",
   "js/core/registry.js",
   "js/core/icons.js",
+  "js/core/config.js",
+  "js/core/cloud.js",
+  "js/core/sync.js",
   "js/core/screens.js",
   "js/core/shell.js",
   "js/games/tictactoe.js",
@@ -43,6 +46,10 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
+  // Only ever handle our own files. Cross-origin requests (e.g. the
+  // Supabase API) must pass straight through — never cached, never
+  // given the index.html fallback.
+  if (new URL(e.request.url).origin !== self.location.origin) return;
   e.respondWith(
     caches.match(e.request).then(
       (hit) =>
@@ -53,7 +60,7 @@ self.addEventListener("fetch", (e) => {
             caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
             return res;
           })
-          .catch(() => caches.match("index.html"))
+          .catch(() => (e.request.mode === "navigate" ? caches.match("index.html") : Response.error()))
     )
   );
 });
