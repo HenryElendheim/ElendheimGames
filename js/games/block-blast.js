@@ -52,6 +52,7 @@ const STYLE = `
 .bb-tray { display:flex; justify-content:space-around; align-items:center; gap:10px; width:min(94vw,400px); min-height:90px; }
 .bb-piece { display:grid; gap:3px; touch-action:none; transition:opacity .15s, transform .1s; }
 .bb-piece.used { opacity:0; pointer-events:none; }
+.bb-piece.noplace { opacity:.34; filter:grayscale(1) brightness(.7); pointer-events:none; }
 .bb-piece:active { transform:scale(1.05); }
 .bb-blk { width:18px; height:18px; border-radius:4px; }
 .bb-ghost { position:fixed; z-index:80; pointer-events:none; display:grid; gap:3px; opacity:.9; }
@@ -107,7 +108,8 @@ export default function init(api) {
       ...tray.map((piece, idx) => {
         const d = dims(piece.cells);
         const el = document.createElement("div");
-        el.className = "bb-piece" + (piece.used ? " used" : "");
+        const placeable = !piece.used && canPlaceAnywhere(piece);
+        el.className = "bb-piece" + (piece.used ? " used" : placeable ? "" : " noplace");
         el.style.gridTemplateColumns = `repeat(${d.w}, 18px)`;
         el.style.gridTemplateRows = `repeat(${d.h}, 18px)`;
         const set = new Set(piece.cells.map(([x, y]) => x + "," + y));
@@ -132,7 +134,7 @@ export default function init(api) {
   }
 
   function startDrag(e, idx) {
-    if (over || clearing || tray[idx].used) return;
+    if (over || clearing || tray[idx].used || !canPlaceAnywhere(tray[idx])) return;
     e.preventDefault();
     const piece = tray[idx];
     const cell = cellPx();
@@ -273,14 +275,15 @@ export default function init(api) {
     setTimeout(() => pop.remove(), 1000);
   }
 
-  function anyMove() {
-    for (const piece of tray) {
-      if (piece.used) continue;
-      const d = dims(piece.cells);
-      for (let r = 0; r <= N - d.h; r++)
-        for (let c = 0; c <= N - d.w; c++) if (fits(piece, c, r)) return true;
-    }
+  function canPlaceAnywhere(piece) {
+    const d = dims(piece.cells);
+    for (let r = 0; r <= N - d.h; r++)
+      for (let c = 0; c <= N - d.w; c++) if (fits(piece, c, r)) return true;
     return false;
+  }
+
+  function anyMove() {
+    return tray.some((p) => !p.used && canPlaceAnywhere(p));
   }
 
   function start() {
