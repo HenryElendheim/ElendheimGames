@@ -965,6 +965,7 @@ export default function init(api) {
     let t = null, sx = 0, sy = 0, fired = false, dragging = false, down = false, ghost = null, hint = null;
     const inHandZone = (y) => y - rootRect().top > api.root.clientHeight - 118;
     function startDrag() {
+      clearGhosts();
       dragging = true; el.classList.add("dragging");
       ghost = E("div", "tcg-ghost"); ghost.innerHTML = el.innerHTML;
       ghost.style.cssText += `background:linear-gradient(160deg,#30323d,#191a21);border:2px solid ${RARITY[card.rarity].color};border-radius:11px;padding:5px;height:106px;`;
@@ -1057,9 +1058,11 @@ export default function init(api) {
       if (m.heal) document.querySelectorAll('.tcg-min[data-side="you"]').forEach((e) => { if (+e.dataset.uid !== m.uid) e.classList.toggle("htgt", on); });
     }
     function startDrag() {
+      clearGhosts();
       dragging = true; el.classList.add("dragging-min");
       ghost = el.cloneNode(true);
       ghost.classList.remove("ready", "sel", "tgt", "htgt", "dragging-min");
+      ghost.classList.add("tcg-mghost");
       ghost.style.cssText += `position:absolute;z-index:85;pointer-events:none;opacity:.96;margin:0;width:${el.getBoundingClientRect().width}px;`;
       api.root.append(ghost);
       showTargets(true);
@@ -1139,7 +1142,12 @@ export default function init(api) {
   }
 
   /* ---------------- router ---------------- */
+  // remove any drag ghost left on api.root (overlapping/interrupted drags can
+  // orphan one; it survives re-renders since it's a sibling of `root`)
+  function clearGhosts() { api.root.querySelectorAll(".tcg-ghost, .tcg-mghost").forEach((g) => g.remove()); }
+
   function render() {
+    clearGhosts();
     if (view === "duel") { renderDuel(); return; }
     root.innerHTML = "";
     if (view === "menu") root.append(menuView());
@@ -1155,6 +1163,7 @@ export default function init(api) {
   return {
     destroy() {
       gen++;
+      clearGhosts();
       api.root.style.position = "";
       fxLayer.remove();
       style.remove();
