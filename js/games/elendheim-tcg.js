@@ -934,7 +934,7 @@ export default function init(api) {
     return null;
   }
   function bindHand(el, idx, card) {
-    let t = null, sx = 0, sy = 0, fired = false, dragging = false, ghost = null, hint = null;
+    let t = null, sx = 0, sy = 0, fired = false, dragging = false, down = false, ghost = null, hint = null;
     const inHandZone = (y) => y - rootRect().top > api.root.clientHeight - 118;
     function startDrag() {
       dragging = true; el.classList.add("dragging");
@@ -964,18 +964,19 @@ export default function init(api) {
       render();
     }
     el.addEventListener("pointerdown", (e) => {
-      sx = e.clientX; sy = e.clientY; fired = false; dragging = false;
+      sx = e.clientX; sy = e.clientY; fired = false; dragging = false; down = true;
       // capture the pointer so a mouse drag keeps firing on the card even
       // after the cursor leaves it (touch captures implicitly; mouse does not)
       try { el.setPointerCapture(e.pointerId); } catch {}
       t = setTimeout(() => { t = null; fired = true; showInfo(card); }, 450);
     });
     el.addEventListener("pointermove", (e) => {
+      if (!down) return; // ignore hover (mouse moving with no button held)
       if (!dragging && (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 10)) { if (t) { clearTimeout(t); t = null; } if (!busy && !over && S.turn === "you") startDrag(); }
       if (dragging) { e.preventDefault(); moveGhost(e.clientX, e.clientY); }
     });
-    el.addEventListener("pointerup", (e) => { try { el.releasePointerCapture(e.pointerId); } catch {} if (t) { clearTimeout(t); t = null; } if (dragging) endDrag(e.clientX, e.clientY); else if (!fired) onHand(idx); });
-    el.addEventListener("pointercancel", () => { if (t) { clearTimeout(t); t = null; } if (dragging) { if (ghost) ghost.remove(); if (hint) hint.remove(); el.classList.remove("dragging"); render(); } });
+    el.addEventListener("pointerup", (e) => { down = false; try { el.releasePointerCapture(e.pointerId); } catch {} if (t) { clearTimeout(t); t = null; } if (dragging) endDrag(e.clientX, e.clientY); else if (!fired) onHand(idx); });
+    el.addEventListener("pointercancel", () => { down = false; if (t) { clearTimeout(t); t = null; } if (dragging) { if (ghost) ghost.remove(); if (hint) hint.remove(); el.classList.remove("dragging"); render(); } });
   }
 
   function applyFx() {
