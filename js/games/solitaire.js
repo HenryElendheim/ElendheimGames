@@ -71,6 +71,7 @@ export default function init(api) {
 
   let stock, waste, foundations, tableau, history, won;
   let pending = [];
+  let autoActive = false, autoGen = 0;
   let lift = null; // {type:'tab',col,idx}|{type:'waste'}|{type:'found',i} currently being dragged
   let ghost = null;
 
@@ -121,7 +122,7 @@ export default function init(api) {
   }
 
   function setFooter() {
-    api.setFooter([{ icon: "↶", label: "Undo", onClick: undo, disabled: history.length === 0 || won }]);
+    api.setFooter([{ icon: "↶", label: "Undo", onClick: undo, disabled: history.length === 0 || won || autoActive }]);
   }
   function pills() {
     const s = api.refreshStats();
@@ -144,6 +145,9 @@ export default function init(api) {
     history = [];
     won = false;
     pending = [];
+    autoActive = false;
+    autoGen++;
+    clearGhosts();
     setFooter();
     pills();
     measure();
@@ -156,7 +160,7 @@ export default function init(api) {
   }
 
   function undo() {
-    if (!history.length || won) return;
+    if (!history.length || won || autoActive) return;
     const p = JSON.parse(history.pop());
     ({ stock, waste, foundations, tableau } = p);
     setFooter();
@@ -164,7 +168,7 @@ export default function init(api) {
   }
 
   function onStock() {
-    if (won) return;
+    if (won || autoActive) return;
     snapshot();
     if (stock.length) {
       const c = stock.pop();
@@ -234,6 +238,42 @@ export default function init(api) {
     setFooter();
     render();
     checkWin();
+    if (!won && !autoActive && canAutoComplete()) autoComplete();
+  }
+
+  // when every card is face-up and the stock + waste are empty, the board is
+  // trivially solvable — cascade all cards up to the foundations, one at a time
+  function canAutoComplete() {
+    if (won || stock.length || waste.length) return false;
+    for (const col of tableau) for (const c of col) if (!c.faceUp) return false;
+    return foundations.reduce((n, f) => n + f.length, 0) < 52;
+  }
+  function autoComplete() {
+    autoActive = true;
+    const token = ++autoGen;
+    setFooter();
+    const step = () => {
+      if (token !== autoGen) return; // restarted / left
+      for (let j = 0; j < 7; j++) {
+        const col = tableau[j];
+        if (!col.length) continue;
+        const card = col[col.length - 1];
+        for (let i = 0; i < 4; i++) {
+          if (canFound(card, i)) {
+            col.pop();
+            foundations[i].push(card);
+            pending = [];
+            render(); // FLIP slides the card up to its foundation
+            if (foundations.reduce((n, f) => n + f.length, 0) === 52) { autoActive = false; checkWin(); return; }
+            setTimeout(step, 150);
+            return;
+          }
+        }
+      }
+      autoActive = false; // nothing left to lift
+      setFooter();
+    };
+    setTimeout(step, 200);
   }
 
   // tap: send to the best legal spot
@@ -264,7 +304,7 @@ export default function init(api) {
     MOVE = 8;
 
   function beginGesture(e, source, el) {
-    if (won || e.button > 0) return;
+    if (won || autoActive || e.button > 0) return;
     const cards = grabbed(source);
     if (!cards.length) return;
     e.preventDefault();
@@ -310,7 +350,14 @@ export default function init(api) {
     window.addEventListener("pointercancel", onUp);
   }
 
+  // remove every drag ghost (defensive: overlapping gestures could orphan one
+  // on document.body, where it would float over everything including modals)
+  function clearGhosts() {
+    document.querySelectorAll(".so-drag").forEach((g) => g.remove());
+    ghost = null;
+  }
   function startDrag(source, cards) {
+    clearGhosts();
     lift = source;
     render(); // dims the originals
     ghost = mk("div", "so-drag", ...cards.map(faceCard));
@@ -350,8 +397,7 @@ export default function init(api) {
   function endDrag(x, y, source, cards) {
     const t = dropTarget(x, y);
     const ok = validDrop(t, cards, source);
-    if (ghost) ghost.remove();
-    ghost = null;
+    clearGhosts();
     lift = null;
     colsEl.querySelectorAll(".drop-ok").forEach((n) => n.classList.remove("drop-ok"));
     foundEls.forEach((n) => n.classList.remove("drop-ok"));
@@ -361,6 +407,7 @@ export default function init(api) {
 
   function checkWin() {
     if (foundations.reduce((n, f) => n + f.length, 0) !== 52) return;
+    clearGhosts();
     won = true;
     api.reportWin();
     pills();
@@ -452,8 +499,9 @@ export default function init(api) {
   start();
   return {
     destroy: () => {
+      autoGen++; // stop any running auto-complete cascade
       ro.disconnect();
-      if (ghost) ghost.remove();
+      clearGhosts();
       const root = document.documentElement.style;
       root.removeProperty("--so-cw");
       root.removeProperty("--so-ch");
