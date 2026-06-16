@@ -120,6 +120,12 @@ const SET = buildSet();
   give(SET.filter((c) => c.rarity === "epic" && c.type === "minion")[2], { kind: "summon", atk: 2, hp: 2, count: 1 });
   give(SET.filter((c) => c.rarity === "legendary" && c.type === "minion")[2], { kind: "damageFace", amount: 4 });
 })();
+// a couple of healer minions (drag onto a friendly minion to heal it; never themselves)
+(function addHealers() {
+  const make = (card, amt) => { if (card) { card.heal = amt; card.atk = Math.max(1, card.atk - 2); } };
+  make(SET.filter((c) => c.rarity === "rare" && c.type === "minion" && !c.deathrattle)[0], 3);
+  make(SET.filter((c) => c.rarity === "epic" && c.type === "minion")[3], 4);
+})();
 
 const shuffle = (a) => {
   for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; }
@@ -312,6 +318,9 @@ const STYLE = `
 .tcg-pop button { width:100%; border:none; border-radius:14px; padding:13px; font-weight:800; font-size:14px; margin-top:8px; }
 .tcg-pop .p1 { background:linear-gradient(160deg,#ffcf5a,#e8821e); color:#3a2400; } .tcg-pop .p2 { background:#2a2f3a; color:#fff; }
 .tcg-chip.death { background:#b07ad8; color:#2a1040; }
+.tcg-chip.heal { background:#6fdca0; color:#0a3a22; }
+.tcg-min.htgt { border-color:#5fe08a; box-shadow:0 0 14px #5fe08a; }
+.tcg-min.dragging-min { opacity:.28; }
 
 /* info popup */
 .tcg-info { position:absolute; inset:0; z-index:70; display:grid; place-items:center; background:rgba(8,9,12,.72); }
@@ -450,6 +459,7 @@ export default function init(api) {
 
   const E = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
   const chips = (kw) => kw.filter((k) => KW_LABEL[k]).map((k) => `<span class="tcg-chip ${k}">${KW_LABEL[k]}</span>`).join("");
+  const allChips = (o) => chips(o.keywords || []) + (o.heal ? `<span class="tcg-chip heal">Heal ${o.heal}</span>` : "");
   const glyph = (id) => `<svg viewBox="0 0 100 100">${GLYPHS[id % GLYPHS.length]}</svg>`;
 
   function topBar(title, onBack) {
@@ -520,7 +530,7 @@ export default function init(api) {
     c.innerHTML =
       `<div class="cc">${base.cost}</div>` +
       (showLevel && lvl > 1 ? `<div class="lv">${"★".repeat(lvl - 1)}</div>` : "") +
-      `<div class="ca">${glyph(base.id)}</div><div class="cn">${base.name}</div><div class="ck">${chips(eff.keywords)}</div>${stats}`;
+      `<div class="ca">${glyph(base.id)}</div><div class="cn">${base.name}</div><div class="ck">${allChips(eff)}</div>${stats}`;
     return c;
   }
 
@@ -682,7 +692,7 @@ export default function init(api) {
     return {
       uid: ++uidc, name: card.name, rarity: card.rarity, gid: card.id,
       atk: card.atk, hp: card.hp, maxHp: card.hp, keywords: card.keywords.slice(),
-      deathrattle: card.deathrattle || null, enter,
+      deathrattle: card.deathrattle || null, heal: card.heal || 0, enter,
       shield: card.keywords.includes("shield"), canAttack: card.keywords.includes("charge"), summoned: true,
     };
   }
@@ -791,6 +801,17 @@ export default function init(api) {
     att.canAttack = false;
     cleanupDead();
   }
+  function doHeal(side, healerUid, targetUid) {
+    const healer = findMin(side, healerUid);
+    if (!healer || !healer.canAttack || !healer.heal) return;
+    const tgt = findMin(side, targetUid);
+    if (!tgt || tgt.uid === healer.uid || tgt.hp >= tgt.maxHp) return; // never itself; no overheal
+    const healed = Math.min(tgt.maxHp, tgt.hp + healer.heal) - tgt.hp;
+    tgt.hp += healed;
+    if (healed > 0) pushFx({ uid: tgt.uid, type: "heal", num: "+" + healed });
+    pushFx({ uid: healer.uid, type: "attack" });
+    healer.canAttack = false;
+  }
 
   function endGame(winner) {
     if (over) return;
@@ -814,17 +835,18 @@ export default function init(api) {
     }, 950);
   }
 
-  /* duel interactions */
+  /* duel interactions — tapping a hand card SELECTS it (drag to play) */
   function onHand(idx) {
     if (busy || over || S.turn !== "you") return;
     const card = S.hand.you[idx];
-    if (!card || card.cost > S.mana.you) return;
-    if (card.type === "minion" && S.board.you.length >= 7) return;
+    if (!card) return;
     if (spellNeedsTarget(card)) {
-      if (card.effect.kind === "buff" && S.board.you.length === 0) return;
+      // targeted spell: select so you can tap a target to cast it
       sel = sel && sel.t === "spell" && sel.idx === idx ? null : { t: "spell", idx };
-      render();
-    } else { playCard("you", idx, null); sel = null; render(); }
+    } else {
+      sel = sel && sel.t === "sel" && sel.idx === idx ? null : { t: "sel", idx };
+    }
+    render();
   }
   function onMinion(side, uid) {
     if (busy || over || S.turn !== "you") return;
@@ -870,6 +892,11 @@ export default function init(api) {
     for (const m of [...S.board.cpu]) {
       if (over) break;
       if (!S.board.cpu.includes(m) || !m.canAttack) continue;
+      // a healer mends its most-hurt ally instead of attacking, when one's damaged
+      if (m.heal) {
+        const hurt = S.board.cpu.filter((x) => x.uid !== m.uid && x.hp < x.maxHp).sort((a, b) => (a.hp - a.maxHp) - (b.hp - b.maxHp))[0];
+        if (hurt) { doHeal("cpu", m.uid, hurt.uid); render(); await wait(460); if (gen !== myGen || over) return; continue; }
+      }
       const tgt = cpuAttackTarget(m); if (tgt == null) continue;
       doAttack("cpu", m.uid, tgt); render(); await wait(460); if (gen !== myGen || over) return;
     }
@@ -895,6 +922,7 @@ export default function init(api) {
     if (card.type === "spell" && card.effect) lines.push(`<b>Spell:</b> ${effectText(card.effect)}`);
     if (card.battlecry) lines.push(`<b>Battlecry:</b> ${effectText(card.battlecry)}`);
     if (card.deathrattle) lines.push(`<b>Deathrattle:</b> ${effectText(card.deathrattle)}`);
+    if (card.heal) lines.push(`<b>Heal ${card.heal}:</b> Drag onto a friendly minion to restore ${card.heal} health (never itself).`);
     for (const k of card.keywords || []) if (KW_DESC[k] && k !== "death") lines.push(KW_DESC[k]);
     if ((card.keywords || []).includes("death") && !card.deathrattle) lines.push(KW_DESC.death);
     if (!lines.length) lines.push("A plain minion — no special abilities.");
@@ -902,7 +930,7 @@ export default function init(api) {
   }
   function minionInfo(m) {
     const base = SET[m.gid] || {};
-    return { name: m.name, rarity: m.rarity, cost: base.cost, type: "minion", atk: m.atk, hp: m.hp, keywords: m.keywords, battlecry: base.battlecry, deathrattle: m.deathrattle };
+    return { name: m.name, rarity: m.rarity, cost: base.cost, type: "minion", atk: m.atk, hp: m.hp, keywords: m.keywords, battlecry: base.battlecry, deathrattle: m.deathrattle, heal: m.heal };
   }
   function showInfo(card) {
     const r = RARITY[card.rarity] || RARITY.common;
@@ -1008,11 +1036,52 @@ export default function init(api) {
     if (!seen.has(m.uid)) cls += " fx-" + m.enter;
     const r = RARITY[m.rarity];
     const el = E("div", cls,
-      `<div class="art" style="--a1:${r.a1};--a2:${r.a2}">${glyph(m.gid)}</div><div class="nm">${m.name}</div><div class="tcg-mk">${chips(m.keywords)}</div><div class="tcg-st a">${m.atk}</div><div class="tcg-st h">${m.hp}</div>`);
+      `<div class="art" style="--a1:${r.a1};--a2:${r.a2}">${glyph(m.gid)}</div><div class="nm">${m.name}</div><div class="tcg-mk">${allChips(m)}</div><div class="tcg-st a">${m.atk}</div><div class="tcg-st h">${m.hp}</div>`);
     el.dataset.uid = m.uid; el.dataset.side = side;
     seen.add(m.uid); nodeOf.set(m.uid, el);
-    bindCard(el, () => onMinion(side, m.uid), () => showInfo(minionInfo(m)));
+    bindMinion(el, side, m);
     return el;
+  }
+  // drag a ready minion onto an enemy to attack, or onto an ally to heal
+  // (healers can't heal themselves); tap selects, long-press shows info
+  function bindMinion(el, side, m) {
+    let t = null, sx = 0, sy = 0, fired = false, dragging = false, down = false, ghost = null;
+    const canAct = () => side === "you" && m.canAttack && S.turn === "you" && !busy && !over;
+    function showTargets(on) {
+      const ta = taunts("cpu");
+      document.querySelectorAll('.tcg-min[data-side="cpu"]').forEach((e) => {
+        const mm = findMin("cpu", +e.dataset.uid);
+        e.classList.toggle("tgt", on && !!mm && (!ta.length || mm.keywords.includes("taunt")));
+      });
+      if (heroNode.cpu) heroNode.cpu.classList.toggle("tgt", on && !ta.length);
+      if (m.heal) document.querySelectorAll('.tcg-min[data-side="you"]').forEach((e) => { if (+e.dataset.uid !== m.uid) e.classList.toggle("htgt", on); });
+    }
+    function startDrag() {
+      dragging = true; el.classList.add("dragging-min");
+      ghost = el.cloneNode(true);
+      ghost.classList.remove("ready", "sel", "tgt", "htgt", "dragging-min");
+      ghost.style.cssText += `position:absolute;z-index:85;pointer-events:none;opacity:.96;margin:0;width:${el.getBoundingClientRect().width}px;`;
+      api.root.append(ghost);
+      showTargets(true);
+    }
+    function moveGhost(x, y) { const o = rootRect(); ghost.style.left = x - o.left + "px"; ghost.style.top = y - o.top + "px"; ghost.style.transform = "translate(-50%,-50%) scale(1.06)"; }
+    function endDrag(x, y) {
+      if (ghost) { ghost.remove(); ghost = null; }
+      showTargets(false);
+      el.classList.remove("dragging-min");
+      const tgt = dropTarget(x, y);
+      if (tgt && canAct()) {
+        const ta = taunts("cpu");
+        if (tgt.hero === "cpu") { if (!ta.length) doAttack("you", m.uid, "hero"); }
+        else if (tgt.side === "cpu") { const dm = findMin("cpu", tgt.uid); if (dm && (!ta.length || dm.keywords.includes("taunt"))) doAttack("you", m.uid, tgt.uid); }
+        else if (tgt.side === "you" && m.heal && tgt.uid !== m.uid) doHeal("you", m.uid, tgt.uid);
+      }
+      render();
+    }
+    el.addEventListener("pointerdown", (e) => { down = true; sx = e.clientX; sy = e.clientY; fired = false; dragging = false; try { el.setPointerCapture(e.pointerId); } catch {} t = setTimeout(() => { t = null; fired = true; showInfo(minionInfo(m)); }, 450); });
+    el.addEventListener("pointermove", (e) => { if (!down) return; if (!dragging && (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8)) { if (t) { clearTimeout(t); t = null; } if (canAct()) startDrag(); } if (dragging) { e.preventDefault(); moveGhost(e.clientX, e.clientY); } });
+    el.addEventListener("pointerup", (e) => { down = false; try { el.releasePointerCapture(e.pointerId); } catch {} if (t) { clearTimeout(t); t = null; } if (dragging) endDrag(e.clientX, e.clientY); else if (!fired) onMinion(side, m.uid); });
+    el.addEventListener("pointercancel", () => { down = false; if (t) { clearTimeout(t); t = null; } if (dragging) { if (ghost) ghost.remove(); showTargets(false); el.classList.remove("dragging-min"); render(); } });
   }
   function heroBar(side) {
     const me = side === "you";
@@ -1035,9 +1104,9 @@ export default function init(api) {
       const r = RARITY[card.rarity];
       const ok = card.cost <= S.mana.you && S.turn === "you" && !busy && !over && (card.type !== "minion" || S.board.you.length < 7);
       let cls = "tcg-hc " + (ok ? "playable" : "dim");
-      if (sel && sel.t === "spell" && sel.idx === idx) cls += " sel";
+      if (sel && (sel.t === "spell" || sel.t === "sel") && sel.idx === idx) cls += " sel";
       const stats = card.type === "minion" ? `<div class="sa">${card.atk}</div><div class="sh">${card.hp}</div>` : `<div class="spl">SPELL</div>`;
-      const el = E("div", cls, `<div class="c">${card.cost}</div><div class="ha" style="--a1:${r.a1};--a2:${r.a2}">${glyph(card.id)}</div><div class="hn">${card.name}</div><div class="tcg-mk">${chips(card.keywords)}</div>${stats}`);
+      const el = E("div", cls, `<div class="c">${card.cost}</div><div class="ha" style="--a1:${r.a1};--a2:${r.a2}">${glyph(card.id)}</div><div class="hn">${card.name}</div><div class="tcg-mk">${allChips(card)}</div>${stats}`);
       el.style.setProperty("--rar", r.color); el.style.zIndex = idx; el.style.touchAction = "none";
       bindHand(el, idx, card);
       wrap.append(el);
