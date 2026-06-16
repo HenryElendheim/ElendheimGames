@@ -52,7 +52,7 @@ const STYLE = `
 .so-recycle { width:100%; height:100%; display:grid; place-items:center; font-size:24px; color:rgba(255,255,255,.4); }
 
 .so-drag { position:fixed; left:0; top:0; z-index:60; width:var(--so-cw,50px); pointer-events:none;
-  filter:drop-shadow(0 8px 14px rgba(0,0,0,.55)); will-change:transform; }
+  will-change:transform; }
 .so-drag .so-card { box-shadow:0 2px 4px rgba(0,0,0,.4); }
 .so-drag .so-card:not(:first-child) { margin-top:calc(var(--so-ch,72px) * -0.62); }
 .so-col.drop-ok { box-shadow:inset 0 0 0 2px var(--accent,#5cc4ff); }

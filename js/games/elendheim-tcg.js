@@ -330,8 +330,9 @@ const STYLE = `
 .tcg-info .ab b { color:#ffd75e; }
 .tcg-info button { width:100%; border:none; border-radius:13px; padding:12px; font-weight:800; margin-top:12px; background:#2a2f3a; color:#fff; }
 
-/* drag ghost */
-.tcg-ghost { position:absolute; z-index:80; width:80px; pointer-events:none; filter:drop-shadow(0 10px 16px rgba(0,0,0,.6)); transform:translate(-50%,-50%) scale(1.05); }
+/* drag ghost (no shadow — a drop-shadow on the moving ghost smears into a trail on mobile) */
+.tcg-ghost { position:absolute; z-index:80; width:80px; pointer-events:none; transform:translate(-50%,-50%) scale(1.05); }
+.tcg-mghost { box-shadow:none !important; filter:none !important; }
 .tcg-hc.dragging { opacity:.25; }
 .tcg-cancelhint { position:absolute; bottom:118px; left:50%; transform:translateX(-50%); z-index:79; background:rgba(20,22,28,.85); color:#ff9a8a; font-weight:800; font-size:12px; padding:6px 12px; border-radius:12px; pointer-events:none; }
 
@@ -967,9 +968,12 @@ export default function init(api) {
     function startDrag() {
       clearGhosts();
       dragging = true; el.classList.add("dragging");
-      ghost = E("div", "tcg-ghost"); ghost.innerHTML = el.innerHTML;
-      ghost.style.cssText += `background:linear-gradient(160deg,#30323d,#191a21);border:2px solid ${RARITY[card.rarity].color};border-radius:11px;padding:5px;height:106px;`;
-      ghost.style.setProperty("--rar", RARITY[card.rarity].color);
+      // clone the real card so its styles apply (a bare div loses .tcg-hc
+      // descendant rules and the art/text spill below the card)
+      ghost = el.cloneNode(true);
+      ghost.classList.remove("dragging", "sel", "playable", "dim");
+      ghost.classList.add("tcg-ghost");
+      ghost.style.cssText += "position:absolute;left:0;top:0;margin:0;box-shadow:none;pointer-events:none;z-index:80;";
       api.root.append(ghost);
     }
     function moveGhost(x, y) {
