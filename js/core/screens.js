@@ -25,7 +25,7 @@ export function renderHome(go) {
     "div",
     { class: "home-top" },
     el("div", { class: "wordmark" }, el("span", {}, "Elendheim "), el("span", { class: "em" }, "Games")),
-    profileChip(go)
+    el("div", { class: "top-actions" }, fullscreenChip(), profileChip(go))
   );
 
   const grid = el(
@@ -232,6 +232,31 @@ function profileChip(go) {
   const p = Storage.getProfile();
   const avatar = el("div", { class: "avatar", style: { background: p.color } }, initials(p.name));
   return el("button", { class: "chip profile", onClick: () => openSettings(go) }, avatar, el("span", {}, p.name || "Player"));
+}
+
+/* ---- fullscreen toggle (Fullscreen API — works on Android; iOS Safari has
+   no web fullscreen, so the chip is hidden there and home-screen install gives
+   the same effect) ---- */
+const fsRoot = () => document.documentElement;
+const fsSupported = () => !!(fsRoot().requestFullscreen || fsRoot().webkitRequestFullscreen);
+const fsActive = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+function toggleFullscreen() {
+  const r = fsActive()
+    ? (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document)
+    : (fsRoot().requestFullscreen || fsRoot().webkitRequestFullscreen || (() => {})).call(fsRoot());
+  if (r && r.catch) r.catch(() => {});
+}
+let fsListening = false;
+function fullscreenChip() {
+  if (!fsSupported()) return null;
+  const btn = el("button", { class: "icon-btn fs-btn", onClick: toggleFullscreen }, uiIcon(fsActive() ? "fullscreen-exit" : "fullscreen"));
+  if (!fsListening) {
+    fsListening = true;
+    const upd = () => document.querySelectorAll(".fs-btn").forEach((b) => b.replaceChildren(uiIcon(fsActive() ? "fullscreen-exit" : "fullscreen")));
+    document.addEventListener("fullscreenchange", upd);
+    document.addEventListener("webkitfullscreenchange", upd);
+  }
+  return btn;
 }
 
 function openSettings(go) {

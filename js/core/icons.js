@@ -102,6 +102,14 @@ const UI = {
     `<rect x="18" y="50" width="15" height="30" rx="2" fill="currentColor"/>
      <rect x="42" y="32" width="15" height="48" rx="2" fill="currentColor"/>
      <rect x="66" y="42" width="15" height="38" rx="2" fill="currentColor"/>`,
+  fullscreen:
+    `<g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+       <path d="M22 38V26a4 4 0 0 1 4-4h12"/><path d="M78 38V26a4 4 0 0 0-4-4H62"/>
+       <path d="M22 62v12a4 4 0 0 0 4 4h12"/><path d="M78 62v12a4 4 0 0 1-4 4H62"/></g>`,
+  "fullscreen-exit":
+    `<g fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+       <path d="M38 22v12a4 4 0 0 1-4 4H22"/><path d="M62 22v12a4 4 0 0 0 4 4h12"/>
+       <path d="M38 78V66a4 4 0 0 0-4-4H22"/><path d="M62 78V66a4 4 0 0 1 4-4h12"/></g>`,
   spider:
     `<g fill="none" stroke="#241046" stroke-width="5" stroke-linecap="round">
        <path d="M40 40 L18 28 M40 49 L14 44 M40 57 L14 60 M40 64 L18 74"/>
@@ -109,8 +117,7 @@ const UI = {
      </g>
      <ellipse cx="50" cy="54" rx="13" ry="17" fill="#241046"/>
      <circle cx="50" cy="36" r="9" fill="#241046"/>`,
-  gear:
-    `<g fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round">
+  gear:    `<g fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round">
        <circle cx="50" cy="50" r="19"/>
        <line x1="50" y1="13" x2="50" y2="23"/><line x1="50" y1="77" x2="50" y2="87"/>
        <line x1="13" y1="50" x2="23" y2="50"/><line x1="77" y1="50" x2="87" y2="50"/>
