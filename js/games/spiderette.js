@@ -9,6 +9,7 @@
    ============================================================ */
 
 import { uiIcon } from "../core/icons.js";
+import { flipRender } from "../core/anim.js";
 
 const COLS = 7;
 const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
@@ -409,6 +410,9 @@ export default function init(api) {
   }
 
   function render() {
+    flipRender(colsEl, paint, { origin: stockEl });
+  }
+  function paint() {
     renderStock();
     for (let j = 0; j < COLS; j++) {
       const colEl = colEls[j];
@@ -418,6 +422,7 @@ export default function init(api) {
         const def = SUIT_DEFS[card.suit];
         const cardEl = document.createElement("div");
         cardEl.className = "sp-card" + (card.faceUp ? (def.red ? " red" : " navy") : " down");
+        cardEl.dataset.cid = card.suit + "-" + card.rank;
         if (selected && selected.j === j && idx >= selected.idx) cardEl.classList.add("sel");
         if (card.faceUp)
           cardEl.innerHTML = `<span class="sp-rk">${RANKS[card.rank - 1]}</span><span class="sp-cs">${def.s}</span><span class="sp-pip">${def.s}</span>`;

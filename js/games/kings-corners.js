@@ -7,6 +7,8 @@
    First to empty their hand wins. Tracks wins + streak.
    ============================================================ */
 
+import { flipRender } from "../core/anim.js";
+
 const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 
 const STYLE = `
@@ -20,7 +22,7 @@ const STYLE = `
 .kc-slot .hint { font-size:9px; color:rgba(255,255,255,.3); font-weight:700; letter-spacing:.06em; }
 .kc-card { width:100%; height:100%; border-radius:9px; background:#fbfbfb; color:#1a1a1a; position:relative;
   box-shadow:0 3px 7px rgba(0,0,0,.4); display:grid; place-items:center; font-size:22px; font-weight:800;
-  user-select:none; animation:kc-deal .18s ease; }
+  user-select:none; }
 .kc-card.red { color:#d63a2f; }
 .kc-card .rk { position:absolute; top:3px; left:5px; font-size:12px; line-height:1; }
 .kc-card.back { background:repeating-linear-gradient(45deg,#caa017,#caa017 5px,#a8830f 5px,#a8830f 10px); color:#fff; }
@@ -99,6 +101,7 @@ export default function init(api) {
   function cardFace(c, cls = "") {
     const el = document.createElement("div");
     el.className = "kc-card" + (c.c === "r" ? " red" : "") + (cls ? " " + cls : "");
+    if (c.s) el.dataset.cid = c.s + c.r;
     el.innerHTML = `<span class="rk">${c.r}</span>${c.s}`;
     return el;
   }
@@ -145,6 +148,9 @@ export default function init(api) {
   }
 
   function render() {
+    flipRender(wrap, paint, { origin: () => wrap.querySelector(".kc-stock") });
+  }
+  function paint() {
     // grid order: TL, N, TR / W, stock, E / BL, S, BR
     const order = [corners[0], edges[0], corners[1], edges[3], "stock", edges[1], corners[2], edges[2], corners[3]];
     board.replaceChildren(...order.map((p) => (p === "stock" ? stockCell() : pileCell(p))));

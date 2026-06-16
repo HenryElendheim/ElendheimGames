@@ -4,6 +4,8 @@
    busting. Tracks wins + streak.
    ============================================================ */
 
+import { flipRender } from "../core/anim.js";
+
 const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 const SUITS = ["♠", "♥", "♦", "♣"];
 
@@ -13,8 +15,7 @@ const STYLE = `
 .bj-area h3 { margin:0; font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dim); font-weight:700; }
 .bj-hand { display:flex; gap:8px; min-height:96px; justify-content:center; flex-wrap:wrap; }
 .bj-card { width:64px; height:92px; border-radius:10px; background:#fbfbfb; color:#1a1a1a; position:relative;
-  box-shadow:0 4px 10px rgba(0,0,0,.4); display:grid; place-items:center; font-size:30px; font-weight:800;
-  animation:bj-deal .2s ease; }
+  box-shadow:0 4px 10px rgba(0,0,0,.4); display:grid; place-items:center; font-size:30px; font-weight:800; }
 .bj-card.red { color:#d63a2f; }
 .bj-card .rk { position:absolute; top:5px; left:7px; font-size:15px; }
 .bj-card.back { background:repeating-linear-gradient(45deg,#5b6bd6,#5b6bd6 6px,#4453b0 6px,#4453b0 12px); }
@@ -97,11 +98,15 @@ export default function init(api) {
   function cardEl(c) {
     const el = document.createElement("div");
     el.className = "bj-card" + (c.s === "♥" || c.s === "♦" ? " red" : "");
+    el.dataset.cid = c.r + c.s;
     el.innerHTML = `<span class="rk">${c.r}</span>${c.s}`;
     return el;
   }
 
   function render() {
+    flipRender(wrap, paint);
+  }
+  function paint() {
     playerArea.hand.replaceChildren(...player.map(cardEl));
     playerArea.total.textContent = value(player);
     if (revealed) {
@@ -115,6 +120,7 @@ export default function init(api) {
     } else {
       const back = document.createElement("div");
       back.className = "bj-card back";
+      if (dealer[1]) back.dataset.cid = dealer[1].r + dealer[1].s;
       dealerArea.hand.replaceChildren(cardEl(dealer[0]), back);
       dealerArea.total.textContent = value([dealer[0]]) + " + ?";
     }

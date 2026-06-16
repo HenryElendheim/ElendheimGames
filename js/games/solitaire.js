@@ -11,6 +11,8 @@
    Tracks: wins + streak.
    ============================================================ */
 
+import { flipRender } from "../core/anim.js";
+
 const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 const SUITS = [
   { s: "♠", red: false },
@@ -379,17 +381,29 @@ export default function init(api) {
   function faceCard(card) {
     const def = SUITS[card.suit];
     const el = mk("div", "so-card " + (def.red ? "red" : "navy"));
+    el.dataset.cid = card.suit + "-" + card.rank;
     el.innerHTML = `<span class="so-rk">${RANKS[card.rank - 1]}</span><span class="so-cs">${def.s}</span><span class="so-pip">${def.s}</span>`;
     return el;
   }
 
   function render() {
+    flipRender(wrap, paint, { origin: stockEl });
+  }
+  function paint() {
     // stock
     stockEl.replaceChildren();
     if (stock.length) stockEl.append(mk("div", "so-stockback"));
     else stockEl.append(Object.assign(document.createElement("div"), { className: "so-recycle", textContent: "↺" }));
-    // waste
+    // waste — also render the card beneath the top so it stays visible
+    // while a freshly drawn card flies in from the deck and covers it
     wasteEl.replaceChildren();
+    if (waste.length >= 2) {
+      const under = faceCard(waste[waste.length - 2]);
+      under.style.position = "absolute";
+      under.style.inset = "0";
+      under.style.pointerEvents = "none";
+      wasteEl.append(under);
+    }
     if (waste.length) {
       const c = faceCard(waste[waste.length - 1]);
       c.style.position = "absolute";
@@ -418,6 +432,7 @@ export default function init(api) {
       colEl.classList.toggle("empty", tableau[j].length === 0);
       tableau[j].forEach((card, idx) => {
         const el = card.faceUp ? faceCard(card) : mk("div", "so-card down");
+        if (!card.faceUp) el.dataset.cid = card.suit + "-" + card.rank;
         if (lift && lift.type === "tab" && lift.col === j && idx >= lift.idx) el.classList.add("lift");
         if (card.faceUp) el.addEventListener("pointerdown", (e) => beginGesture(e, { type: "tab", col: j, idx }, el));
         colEl.append(el);
