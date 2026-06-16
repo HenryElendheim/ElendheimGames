@@ -17,7 +17,28 @@ const RARITY = {
   epic: { color: "#b06bff", a1: "#7b3fd0", a2: "#3a1873", rank: 2 },
   legendary: { color: "#ffb83d", a1: "#f5a623", a2: "#7a4d00", rank: 3 },
 };
-const KW_LABEL = { taunt: "Taunt", charge: "Charge", shield: "Shield", rush: "Rush" };
+const KW_LABEL = { taunt: "Taunt", charge: "Charge", shield: "Shield", rush: "Rush", death: "Deathrattle" };
+const KW_DESC = {
+  taunt: "Taunt — enemies must attack this minion first.",
+  charge: "Charge — can attack the turn it's played.",
+  shield: "Divine Shield — ignores the first damage it takes.",
+  rush: "Rush — can attack minions immediately.",
+  death: "Deathrattle — triggers an effect when it dies.",
+};
+function effectText(e) {
+  if (!e) return "";
+  switch (e.kind) {
+    case "damage": return `Deal ${e.amount} damage.`;
+    case "damageFace": return `Deal ${e.amount} damage to the enemy hero.`;
+    case "aoe": return `Deal ${e.amount} damage to all enemy minions.`;
+    case "buff": return `Give a friendly minion +${e.atk}/+${e.hp}.`;
+    case "buffRandom": return `Give a random friendly minion +${e.atk}/+${e.hp}.`;
+    case "heal": return `Restore ${e.amount} health to your hero.`;
+    case "draw": return `Draw ${e.count} card${e.count > 1 ? "s" : ""}.`;
+    case "summon": return `Summon ${e.count} ${e.atk}/${e.hp} Warden${e.count > 1 ? "s" : ""}.`;
+    default: return "";
+  }
+}
 const GLYPHS = [
   `<path d="M50 18l10 22 24 2-18 16 6 24-22-13-22 13 6-24-18-16 24-2z"/>`,
   `<path d="M50 16l30 10v22c0 18-14 28-30 36-16-8-30-18-30-36V26z"/>`,
@@ -90,6 +111,15 @@ function buildSet() {
   return cards;
 }
 const SET = buildSet();
+// sprinkle Deathrattle onto a few minions (stable ids)
+(function addDeathrattles() {
+  const give = (card, dr) => { if (card) { card.deathrattle = dr; if (!card.keywords.includes("death")) card.keywords = [...card.keywords, "death"]; } };
+  const rares = SET.filter((c) => c.rarity === "rare" && c.type === "minion");
+  give(rares[0], { kind: "aoe", amount: 1 });
+  give(rares[1], { kind: "summon", atk: 1, hp: 1, count: 1 });
+  give(SET.filter((c) => c.rarity === "epic" && c.type === "minion")[2], { kind: "summon", atk: 2, hp: 2, count: 1 });
+  give(SET.filter((c) => c.rarity === "legendary" && c.type === "minion")[2], { kind: "damageFace", amount: 4 });
+})();
 
 const shuffle = (a) => {
   for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; }
@@ -246,7 +276,11 @@ const STYLE = `
 .tcg-st { position:absolute; bottom:-6px; width:22px; height:22px; display:grid; place-items:center; font-weight:800; font-size:12px; clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); text-shadow:0 1px 2px #000; }
 .tcg-st.a { left:-5px; background:linear-gradient(160deg,#ffcf5a,#e8821e); } .tcg-st.h { right:-5px; background:linear-gradient(160deg,#ff7a72,#d6342b); }
 .tcg-hero { position:absolute; left:8px; right:8px; z-index:2; display:flex; align-items:center; gap:10px; }
-.tcg-hero.foe { top:8px; } .tcg-hero.me { bottom:118px; }
+.tcg-hero.me { bottom:118px; }
+.tcg-hero.foe { top:10px; left:0; right:0; flex-direction:column; align-items:center; gap:3px; }
+.tcg-hero.foe .tcg-nm2 { text-align:center; }
+.tcg-hero.foe .tcg-mana { justify-content:center; }
+.tcg-fbacks { position:absolute; top:12px; right:10px; z-index:2; display:flex; }
 .tcg-port { width:52px; height:52px; border-radius:50%; flex:0 0 auto; position:relative; background:radial-gradient(circle at 35% 30%,#6b7fd6,#2a2f6e); border:3px solid #cfd6ff; box-shadow:0 3px 8px rgba(0,0,0,.5); }
 .tcg-port.foep { background:radial-gradient(circle at 35% 30%,#d66b8a,#6e2a3a); border-color:#ffd0dc; }
 .tcg-port.tgt { border-color:#ff6a5a; box-shadow:0 0 16px #ff6a5a; }
@@ -277,6 +311,47 @@ const STYLE = `
 .tcg-pop .rew { color:#ffd75e; font-weight:800; margin-bottom:14px; }
 .tcg-pop button { width:100%; border:none; border-radius:14px; padding:13px; font-weight:800; font-size:14px; margin-top:8px; }
 .tcg-pop .p1 { background:linear-gradient(160deg,#ffcf5a,#e8821e); color:#3a2400; } .tcg-pop .p2 { background:#2a2f3a; color:#fff; }
+.tcg-chip.death { background:#b07ad8; color:#2a1040; }
+
+/* info popup */
+.tcg-info { position:absolute; inset:0; z-index:70; display:grid; place-items:center; background:rgba(8,9,12,.72); }
+.tcg-info .box { width:84%; max-width:300px; background:#1a1b22; border:2px solid var(--rar,#3a3f4a); border-radius:18px; padding:18px; }
+.tcg-info h3 { margin:0; font-size:18px; } .tcg-info .meta { color:#9aa3b2; font-size:12px; font-weight:700; margin:2px 0 12px; }
+.tcg-info .ab { font-size:13px; line-height:1.45; color:#dfe4ee; margin-bottom:6px; }
+.tcg-info .ab b { color:#ffd75e; }
+.tcg-info button { width:100%; border:none; border-radius:13px; padding:12px; font-weight:800; margin-top:12px; background:#2a2f3a; color:#fff; }
+
+/* drag ghost */
+.tcg-ghost { position:absolute; z-index:80; width:80px; pointer-events:none; filter:drop-shadow(0 10px 16px rgba(0,0,0,.6)); transform:translate(-50%,-50%) scale(1.05); }
+.tcg-hc.dragging { opacity:.25; }
+.tcg-cancelhint { position:absolute; bottom:118px; left:50%; transform:translateX(-50%); z-index:79; background:rgba(20,22,28,.85); color:#ff9a8a; font-weight:800; font-size:12px; padding:6px 12px; border-radius:12px; pointer-events:none; }
+
+/* combat / card FX */
+.tcg-fx { position:absolute; inset:0; z-index:55; pointer-events:none; overflow:hidden; }
+.tcg-num { position:absolute; transform:translate(-50%,-50%); font-size:20px; font-weight:800; text-shadow:0 2px 5px rgba(0,0,0,.8); animation:tcg-num .8s ease-out forwards; }
+.tcg-num.dmg { color:#ff6a5a; } .tcg-num.buff { color:#7be08a; } .tcg-num.heal { color:#7be08a; }
+@keyframes tcg-num { 0%{opacity:0;transform:translate(-50%,-30%) scale(.6);} 20%{opacity:1;transform:translate(-50%,-60%) scale(1.1);} 100%{opacity:0;transform:translate(-50%,-150%);} }
+.tcg-ring { position:absolute; transform:translate(-50%,-50%); width:60px; height:60px; margin:-30px 0 0 0; border-radius:50%; }
+.tcg-ring.burst { border:4px solid #ffe08a; animation:tcg-ring .5s ease-out forwards; }
+.tcg-ring.deathr { border:4px solid #b07ad8; animation:tcg-ring .6s ease-out forwards; }
+.tcg-ring.shield { border:4px solid #c2dcff; animation:tcg-ring .5s ease-out forwards; }
+@keyframes tcg-ring { 0%{transform:translate(-50%,-50%) scale(.3);opacity:1;} 100%{transform:translate(-50%,-50%) scale(2.2);opacity:0;} }
+.tcg-puff { position:absolute; transform:translate(-50%,-50%); width:56px; height:78px; border-radius:10px; background:radial-gradient(circle,rgba(180,140,160,.6),transparent 70%); animation:tcg-puff .42s ease-out forwards; }
+@keyframes tcg-puff { 0%{opacity:.9;transform:translate(-50%,-50%) scale(1);} 100%{opacity:0;transform:translate(-50%,-40%) scale(.4) rotate(12deg);} }
+
+/* enter animations (play once per minion) */
+.tcg-min.fx-summon { animation:tcg-en-summon .32s ease; }
+.tcg-min.fx-charge { animation:tcg-en-charge .34s cubic-bezier(.2,1.3,.5,1); }
+.tcg-min.fx-taunt { animation:tcg-en-taunt .34s ease; }
+.tcg-min.fx-battlecry { animation:tcg-en-summon .32s ease; }
+@keyframes tcg-en-summon { 0%{transform:scale(.55);opacity:0;} 70%{transform:scale(1.08);} 100%{transform:scale(1);opacity:1;} }
+@keyframes tcg-en-charge { 0%{transform:translateY(26px) scale(.7);opacity:0;filter:brightness(2);} 100%{transform:none;opacity:1;filter:none;} }
+@keyframes tcg-en-taunt { 0%{transform:scale(1.4);opacity:0;} 55%{transform:scale(.9);} 100%{transform:scale(1);opacity:1;} }
+/* hit / attack */
+.tcg-min.fx-hit, .tcg-port.fx-hit { animation:tcg-shake .3s ease; }
+@keyframes tcg-shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-5px);} 75%{transform:translateX(5px);} }
+.tcg-min.fx-attack { animation:tcg-attack .28s ease; }
+@keyframes tcg-attack { 0%{transform:scale(1);} 40%{transform:translateY(-8px) scale(1.12);} 100%{transform:scale(1);} }
 `;
 
 const BACK_SVG = `<svg viewBox="0 0 24 24"><path d="M14 5L8 12l6 7" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
@@ -336,11 +411,40 @@ export default function init(api) {
   let S = null, sel = null;          // duel state
   let pack = null, revealIdx = 0;     // pack reveal state
   let duelFields = null;              // {you, enemy}
+  const seen = new Set();             // minion uids already animated in
+  const nodeOf = new Map();           // uid -> current DOM node
+  let heroNode = {};                  // side -> portrait node
+  let pendingFx = [];                 // fx to apply after the next render
 
   const root = document.createElement("div");
   root.className = "tcg";
-  api.root.append(root);
+  const fxLayer = document.createElement("div");
+  fxLayer.className = "tcg-fx";
+  api.root.append(root, fxLayer);
   api.onRestart(() => { if (view !== "duel") go("menu"); });
+
+  // ---- FX helpers (overlays live in fxLayer so re-renders don't wipe them) ----
+  const rootRect = () => api.root.getBoundingClientRect();
+  function relRect(elm) {
+    const r = elm.getBoundingClientRect(), o = rootRect();
+    return { x: r.left - o.left + r.width / 2, y: r.top - o.top + r.height / 2 };
+  }
+  function fxNum(pt, text, cls) {
+    const n = E("div", "tcg-num " + cls, text);
+    n.style.left = pt.x + "px"; n.style.top = pt.y + "px";
+    fxLayer.append(n); setTimeout(() => n.remove(), 820);
+  }
+  function fxRing(pt, cls) {
+    const n = E("div", "tcg-ring " + cls);
+    n.style.left = pt.x + "px"; n.style.top = pt.y + "px";
+    fxLayer.append(n); setTimeout(() => n.remove(), 640);
+  }
+  function fxPuff(pt) {
+    const n = E("div", "tcg-puff");
+    n.style.left = pt.x + "px"; n.style.top = pt.y + "px";
+    fxLayer.append(n); setTimeout(() => n.remove(), 460);
+  }
+  const pushFx = (fx) => pendingFx.push(fx);
 
   function go(v) { view = v; sel = null; render(); }
 
@@ -425,7 +529,7 @@ export default function init(api) {
     wrap.append(topBar("Collection", () => go("menu")));
     wrap.append(E("div", "tcg-hint", `${ownedCount()} / ${SET.length} collected · duplicates level a card up (★)`));
     const grid = E("div", "tcg-collgrid");
-    SET.forEach((base) => grid.append(cardFace(base)));
+    SET.forEach((base) => { const c = cardFace(base); const info = () => showInfo(effective(base)); bindCard(c, info, info); grid.append(c); });
     wrap.append(grid);
     return wrap;
   }
@@ -444,12 +548,12 @@ export default function init(api) {
     ownedIds.forEach((id) => {
       const c = cardFace(SET[id]);
       if (deck.includes(id)) c.classList.add("in");
-      c.onclick = () => {
+      bindCard(c, () => {
         if (G.deck.includes(id)) G.deck = G.deck.filter((x) => x !== id);
         else if (G.deck.length < 8) G.deck = [...G.deck, id];
         persist();
         render();
-      };
+      }, () => showInfo(effective(SET[id])));
       grid.append(c);
     });
     wrap.append(grid);
@@ -483,7 +587,7 @@ export default function init(api) {
     wrap.append(topBar("Shop", () => go("menu")));
     const s = E("div", "tcg-shop");
     s.append(E("div", "tcg-pack",
-      `<div class="seal"><svg viewBox="0 0 100 100"><path d="M50 14l10 24 26 2-20 17 6 25-22-13-22 13 6-25-20-17 26-2z"/></svg></div><div class="pn">ELDER PACK<small>${PACK_SIZE} CARDS · RARE+ GUARANTEED</small></div>`));
+      `<div class="seal"><svg viewBox="0 0 100 100"><path d="M50 14l10 24 26 2-20 17 6 25-22-13-22 13 6-25-20-17 26-2z"/></svg></div><div class="pn">ELENDHEIM PACK<small>${PACK_SIZE} CARDS · RARE+ GUARANTEED</small></div>`));
     const buy = E("button", "tcg-buy", `Open Pack · ${PACK_COST} ⓗ`);
     buy.disabled = G.heimers < PACK_COST;
     buy.onclick = buyPack;
@@ -574,13 +678,15 @@ export default function init(api) {
   const taunts = (side) => S.board[side].filter((m) => m.keywords.includes("taunt"));
 
   function makeMinion(card) {
+    const enter = card.battlecry ? "battlecry" : card.keywords.includes("charge") ? "charge" : card.keywords.includes("taunt") ? "taunt" : "summon";
     return {
       uid: ++uidc, name: card.name, rarity: card.rarity, gid: card.id,
       atk: card.atk, hp: card.hp, maxHp: card.hp, keywords: card.keywords.slice(),
+      deathrattle: card.deathrattle || null, enter,
       shield: card.keywords.includes("shield"), canAttack: card.keywords.includes("charge"), summoned: true,
     };
   }
-  const token = (atk, hp) => ({ uid: ++uidc, name: "Warden", rarity: "common", gid: 2, atk, hp, maxHp: hp, keywords: [], shield: false, canAttack: false, summoned: true });
+  const token = (atk, hp) => ({ uid: ++uidc, name: "Warden", rarity: "common", gid: 2, atk, hp, maxHp: hp, keywords: [], deathrattle: null, enter: "summon", shield: false, canAttack: false, summoned: true });
 
   function startDuel() {
     gen++;
@@ -613,9 +719,32 @@ export default function init(api) {
     draw(side);
     S.board[side].forEach((m) => { m.canAttack = true; m.summoned = false; });
   }
-  function damageHero(side, amt) { S.hp[side] = Math.max(0, S.hp[side] - amt); if (S.hp[side] <= 0) endGame(other(side)); }
-  function damageMinion(m, amt) { if (amt <= 0) return; if (m.shield) { m.shield = false; return; } m.hp -= amt; }
-  function cleanupDead() { for (const s of ["you", "cpu"]) S.board[s] = S.board[s].filter((m) => m.hp > 0); }
+  function damageHero(side, amt) {
+    if (amt <= 0) return;
+    S.hp[side] = Math.max(0, S.hp[side] - amt);
+    pushFx({ hero: side, type: "hit", num: amt });
+    if (S.hp[side] <= 0) endGame(other(side));
+  }
+  function damageMinion(m, amt) {
+    if (amt <= 0) return;
+    if (m.shield) { m.shield = false; pushFx({ uid: m.uid, type: "shield" }); return; }
+    m.hp -= amt;
+    pushFx({ uid: m.uid, type: "hit", num: amt });
+  }
+  function cleanupDead() {
+    let chain = true, guard = 0;
+    while (chain && guard++ < 8) {
+      chain = false;
+      for (const s of ["you", "cpu"]) {
+        const dead = S.board[s].filter((m) => m.hp <= 0);
+        if (!dead.length) continue;
+        chain = true;
+        dead.forEach((m) => { const el = nodeOf.get(m.uid); if (el) { const pt = relRect(el); fxPuff(pt); if (m.deathrattle) fxRing(pt, "deathr"); } });
+        S.board[s] = S.board[s].filter((m) => m.hp > 0);
+        dead.forEach((m) => { if (m.deathrattle) resolveEffect(m.deathrattle, s, null); });
+      }
+    }
+  }
 
   function resolveEffect(eff, side, targetUid) {
     const foe = other(side);
@@ -626,8 +755,8 @@ export default function init(api) {
     else if (eff.kind === "aoe") S.board[foe].forEach((m) => damageMinion(m, eff.amount));
     else if (eff.kind === "buff" || eff.kind === "buffRandom") {
       let m = eff.kind === "buffRandom" ? S.board[side][(Math.random() * S.board[side].length) | 0] : findMin(side, targetUid);
-      if (m) { m.atk += eff.atk; m.hp += eff.hp; m.maxHp += eff.hp; }
-    } else if (eff.kind === "heal") S.hp[side] = Math.min(25, S.hp[side] + eff.amount);
+      if (m) { m.atk += eff.atk; m.hp += eff.hp; m.maxHp += eff.hp; pushFx({ uid: m.uid, type: "buff", num: `+${eff.atk}/+${eff.hp}` }); }
+    } else if (eff.kind === "heal") { const h = Math.min(25, S.hp[side] + eff.amount) - S.hp[side]; S.hp[side] += h; if (h) pushFx({ hero: side, type: "heal", num: "+" + h }); }
     else if (eff.kind === "draw") for (let i = 0; i < eff.count; i++) draw(side);
     else if (eff.kind === "summon") for (let i = 0; i < eff.count && S.board[side].length < 7; i++) S.board[side].push(token(eff.atk, eff.hp));
     cleanupDead();
@@ -640,8 +769,11 @@ export default function init(api) {
     if (card.type === "minion" && S.board[side].length >= 7) return false;
     S.mana[side] -= card.cost;
     S.hand[side].splice(idx, 1);
-    if (card.type === "minion") { S.board[side].push(makeMinion(card)); if (card.battlecry) resolveEffect(card.battlecry, side, null); }
-    else resolveEffect(card.effect, side, targetUid);
+    if (card.type === "minion") {
+      const m = makeMinion(card);
+      S.board[side].push(m);
+      if (card.battlecry) { pushFx({ uid: m.uid, type: "battlecry" }); resolveEffect(card.battlecry, side, null); }
+    } else resolveEffect(card.effect, side, targetUid);
     cleanupDead();
     return true;
   }
@@ -649,6 +781,7 @@ export default function init(api) {
     const att = findMin(side, attUid);
     if (!att || !att.canAttack) return;
     const foe = other(side), ta = taunts(foe);
+    pushFx({ uid: att.uid, type: "attack" });
     if (targetUid === "hero") { if (ta.length) return; damageHero(foe, att.atk); }
     else {
       const def = findMin(foe, targetUid);
@@ -756,6 +889,103 @@ export default function init(api) {
     return trade ? trade.uid : "hero";
   }
 
+  /* ---- card info / ability descriptions ---- */
+  function describe(card) {
+    const lines = [];
+    if (card.type === "spell" && card.effect) lines.push(`<b>Spell:</b> ${effectText(card.effect)}`);
+    if (card.battlecry) lines.push(`<b>Battlecry:</b> ${effectText(card.battlecry)}`);
+    if (card.deathrattle) lines.push(`<b>Deathrattle:</b> ${effectText(card.deathrattle)}`);
+    for (const k of card.keywords || []) if (KW_DESC[k] && k !== "death") lines.push(KW_DESC[k]);
+    if ((card.keywords || []).includes("death") && !card.deathrattle) lines.push(KW_DESC.death);
+    if (!lines.length) lines.push("A plain minion — no special abilities.");
+    return lines;
+  }
+  function minionInfo(m) {
+    const base = SET[m.gid] || {};
+    return { name: m.name, rarity: m.rarity, cost: base.cost, type: "minion", atk: m.atk, hp: m.hp, keywords: m.keywords, battlecry: base.battlecry, deathrattle: m.deathrattle };
+  }
+  function showInfo(card) {
+    const r = RARITY[card.rarity] || RARITY.common;
+    const back = E("div", "tcg-info");
+    const statline = card.type === "spell" ? "Spell" : `${card.atk} / ${card.hp}`;
+    const lines = describe(card).map((l) => `<div class="ab">${l}</div>`).join("");
+    const box = E("div", "box", `<h3>${card.name}</h3><div class="meta">${card.rarity[0].toUpperCase() + card.rarity.slice(1)} · Cost ${card.cost} · ${statline}</div>${lines}<button>Close</button>`);
+    box.style.setProperty("--rar", r.color);
+    box.querySelector("button").onclick = () => back.remove();
+    back.onclick = (e) => { if (e.target === back) back.remove(); };
+    back.append(box);
+    api.root.append(back);
+  }
+
+  /* ---- gesture helpers (tap vs long-press; hand cards also drag) ---- */
+  function bindCard(el, onTap, onInfo) {
+    let t = null, sx = 0, sy = 0, moved = false, fired = false;
+    el.addEventListener("pointerdown", (e) => { sx = e.clientX; sy = e.clientY; moved = false; fired = false; t = setTimeout(() => { t = null; fired = true; onInfo && onInfo(); }, 450); });
+    el.addEventListener("pointermove", (e) => { if (t && (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 8)) { clearTimeout(t); t = null; moved = true; } });
+    el.addEventListener("pointerup", () => { if (t) { clearTimeout(t); t = null; if (!fired && !moved) onTap && onTap(); } });
+    el.addEventListener("pointercancel", () => { if (t) { clearTimeout(t); t = null; } });
+  }
+  function dropTarget(x, y) {
+    let el = document.elementFromPoint(x, y);
+    while (el && el !== document.body) {
+      if (el.dataset) { if (el.dataset.uid != null) return { uid: +el.dataset.uid, side: el.dataset.side }; if (el.dataset.hero != null) return { hero: el.dataset.hero }; }
+      el = el.parentElement;
+    }
+    return null;
+  }
+  function bindHand(el, idx, card) {
+    let t = null, sx = 0, sy = 0, fired = false, dragging = false, ghost = null, hint = null;
+    const inHandZone = (y) => y - rootRect().top > api.root.clientHeight - 118;
+    function startDrag() {
+      dragging = true; el.classList.add("dragging");
+      ghost = E("div", "tcg-ghost"); ghost.innerHTML = el.innerHTML;
+      ghost.style.cssText += `background:linear-gradient(160deg,#30323d,#191a21);border:2px solid ${RARITY[card.rarity].color};border-radius:11px;padding:5px;height:106px;`;
+      ghost.style.setProperty("--rar", RARITY[card.rarity].color);
+      api.root.append(ghost);
+    }
+    function moveGhost(x, y) {
+      const o = rootRect();
+      ghost.style.left = (x - o.left) + "px"; ghost.style.top = (y - o.top) + "px";
+      const cancel = inHandZone(y);
+      if (cancel && !hint) { hint = E("div", "tcg-cancelhint", "Release to keep in hand"); api.root.append(hint); }
+      else if (!cancel && hint) { hint.remove(); hint = null; }
+    }
+    function endDrag(x, y) {
+      if (ghost) { ghost.remove(); ghost = null; }
+      if (hint) { hint.remove(); hint = null; }
+      el.classList.remove("dragging");
+      if (busy || over || S.turn !== "you" || inHandZone(y)) { render(); return; }
+      if (card.type === "minion" || !spellNeedsTarget(card)) { playCard("you", idx, null); render(); return; }
+      const tgt = dropTarget(x, y);
+      if (tgt) {
+        if (card.effect.kind === "damage" && (tgt.hero === "cpu" || tgt.side === "cpu")) { playCard("you", idx, tgt.hero ? "hero" : tgt.uid); render(); return; }
+        if (card.effect.kind === "buff" && tgt.side === "you") { playCard("you", idx, tgt.uid); render(); return; }
+      }
+      render();
+    }
+    el.addEventListener("pointerdown", (e) => { sx = e.clientX; sy = e.clientY; fired = false; dragging = false; t = setTimeout(() => { t = null; fired = true; showInfo(card); }, 450); });
+    el.addEventListener("pointermove", (e) => {
+      if (!dragging && (Math.abs(e.clientX - sx) > 8 || Math.abs(e.clientY - sy) > 10)) { if (t) { clearTimeout(t); t = null; } if (!busy && !over && S.turn === "you") startDrag(); }
+      if (dragging) { e.preventDefault(); moveGhost(e.clientX, e.clientY); }
+    });
+    el.addEventListener("pointerup", (e) => { if (t) { clearTimeout(t); t = null; } if (dragging) endDrag(e.clientX, e.clientY); else if (!fired) onHand(idx); });
+    el.addEventListener("pointercancel", () => { if (t) { clearTimeout(t); t = null; } if (dragging) { if (ghost) ghost.remove(); if (hint) hint.remove(); el.classList.remove("dragging"); render(); } });
+  }
+
+  function applyFx() {
+    for (const fx of pendingFx) {
+      const el = fx.uid != null ? nodeOf.get(fx.uid) : fx.hero ? heroNode[fx.hero] : null;
+      if (!el) continue;
+      if (fx.type === "hit") { el.classList.add("fx-hit"); fxNum(relRect(el), "-" + fx.num, "dmg"); }
+      else if (fx.type === "buff") fxNum(relRect(el), fx.num, "buff");
+      else if (fx.type === "heal") fxNum(relRect(el), fx.num, "heal");
+      else if (fx.type === "shield") fxRing(relRect(el), "shield");
+      else if (fx.type === "attack") el.classList.add("fx-attack");
+      else if (fx.type === "battlecry") fxRing(relRect(el), "burst");
+    }
+    pendingFx = [];
+  }
+
   /* duel rendering */
   function minionEl(side, m) {
     let cls = "tcg-min";
@@ -768,24 +998,28 @@ export default function init(api) {
       else if (sel.t === "spell" && S.hand.you[sel.idx] && S.hand.you[sel.idx].effect.kind === "damage") cls += " tgt";
     }
     if (sel && side === "you" && sel.t === "spell" && S.hand.you[sel.idx] && S.hand.you[sel.idx].effect.kind === "buff") cls += " tgt";
+    if (!seen.has(m.uid)) cls += " fx-" + m.enter;
     const r = RARITY[m.rarity];
     const el = E("div", cls,
       `<div class="art" style="--a1:${r.a1};--a2:${r.a2}">${glyph(m.gid)}</div><div class="nm">${m.name}</div><div class="tcg-mk">${chips(m.keywords)}</div><div class="tcg-st a">${m.atk}</div><div class="tcg-st h">${m.hp}</div>`);
-    el.onclick = () => onMinion(side, m.uid);
+    el.dataset.uid = m.uid; el.dataset.side = side;
+    seen.add(m.uid); nodeOf.set(m.uid, el);
+    bindCard(el, () => onMinion(side, m.uid), () => showInfo(minionInfo(m)));
     return el;
   }
   function heroBar(side) {
     const me = side === "you";
     const bar = E("div", "tcg-hero " + (me ? "me" : "foe"));
     const port = E("div", "tcg-port" + (me ? "" : " foep"), `<div class="tcg-hp">${S.hp[side]}</div>`);
+    port.dataset.hero = side;
     if (!me && sel && (sel.t === "atk" ? !taunts("cpu").length : sel.t === "spell" && S.hand.you[sel.idx] && S.hand.you[sel.idx].effect.kind === "damage")) port.classList.add("tgt");
     port.onclick = () => onHero(side);
+    heroNode[side] = port;
     const info = E("div", null, `<div class="tcg-nm2">${me ? "You" : "Commander"}</div>`);
     const mana = E("div", "tcg-mana");
     for (let i = 0; i < Math.max(S.maxMana[side], 1); i++) mana.append(E("div", "tcg-cry" + (i < S.mana[side] ? "" : " empty")));
     info.append(mana);
     bar.append(port, info);
-    if (!me) { const backs = E("div", "tcg-backs"); for (let i = 0; i < S.hand.cpu.length; i++) backs.append(E("div", "tcg-bk")); bar.append(backs); }
     return bar;
   }
   function handEl() {
@@ -797,25 +1031,28 @@ export default function init(api) {
       if (sel && sel.t === "spell" && sel.idx === idx) cls += " sel";
       const stats = card.type === "minion" ? `<div class="sa">${card.atk}</div><div class="sh">${card.hp}</div>` : `<div class="spl">SPELL</div>`;
       const el = E("div", cls, `<div class="c">${card.cost}</div><div class="ha" style="--a1:${r.a1};--a2:${r.a2}">${glyph(card.id)}</div><div class="hn">${card.name}</div><div class="tcg-mk">${chips(card.keywords)}</div>${stats}`);
-      el.style.setProperty("--rar", r.color); el.style.zIndex = idx;
-      el.onclick = () => onHand(idx);
+      el.style.setProperty("--rar", r.color); el.style.zIndex = idx; el.style.touchAction = "none";
+      bindHand(el, idx, card);
       wrap.append(el);
     });
     return wrap;
   }
   function renderDuel() {
+    nodeOf.clear(); heroNode = {};
     const yf = FIELDS[duelFields.you].css, ef = FIELDS[duelFields.enemy].css;
     root.innerHTML = `<div class="tcg-bg"><div class="enemy" style="background:${ef}"></div><div class="mine" style="background:${yf}"></div><div class="split"></div></div>`;
     const board = E("div", "tcg-board");
     const eLane = E("div", "tcg-lane"); S.board.cpu.forEach((m) => eLane.append(minionEl("cpu", m)));
     const mLane = E("div", "tcg-lane"); S.board.you.forEach((m) => mLane.append(minionEl("you", m)));
     board.append(eLane, mLane);
+    const fbacks = E("div", "tcg-fbacks"); for (let i = 0; i < S.hand.cpu.length; i++) fbacks.append(E("div", "tcg-bk"));
     const back = E("button", "tcg-duelback", BACK_SVG);
     back.onclick = () => { gen++; busy = false; over = false; go("menu"); };
     const end = E("button", "tcg-endturn", "End Turn ▸");
     end.disabled = busy || over || S.turn !== "you";
     end.onclick = () => { if (!busy && !over && S.turn === "you") { sel = null; cpuTurn(); } };
-    root.append(board, heroBar("cpu"), heroBar("you"), handEl(), back, end);
+    root.append(board, heroBar("cpu"), heroBar("you"), handEl(), fbacks, back, end);
+    applyFx();
   }
   function toast(text) { const t = E("div", "tcg-toast", text); root.append(t); setTimeout(() => t.remove(), 1100); }
   function popup(title, msg, rew, buttons) {
@@ -843,6 +1080,7 @@ export default function init(api) {
     destroy() {
       gen++;
       api.root.style.position = "";
+      fxLayer.remove();
       style.remove();
     },
   };
