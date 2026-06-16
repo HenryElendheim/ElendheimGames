@@ -50,7 +50,7 @@ const STYLE = `
 .bb-pop .lbl { font-size:14px; font-weight:800; color:#fff; letter-spacing:.06em; text-shadow:0 2px 6px rgba(0,0,0,.7); }
 @keyframes bb-pop-rise { 0%{opacity:0;transform:translate(-50%,-30%) scale(.7);} 18%{opacity:1;transform:translate(-50%,-50%) scale(1.12);} 78%{opacity:1;} 100%{opacity:0;transform:translate(-50%,-120%) scale(1);} }
 .bb-tray { display:flex; justify-content:space-around; align-items:center; gap:10px; width:min(94vw,400px); min-height:90px; }
-.bb-piece { display:grid; gap:3px; touch-action:none; transition:opacity .15s, transform .1s; }
+.bb-piece { display:grid; gap:3px; padding:0 20px; min-height:84px; align-content:center; touch-action:none; transition:opacity .15s, transform .1s; }
 .bb-piece.used { opacity:0; pointer-events:none; }
 .bb-piece.noplace { opacity:.34; filter:grayscale(1) brightness(.7); pointer-events:none; }
 .bb-piece:active { transform:scale(1.05); }
