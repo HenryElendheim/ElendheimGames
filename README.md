@@ -1,6 +1,6 @@
 # Elendheim Games
 
-A free, **ad-free** collection of the games I actually like to play — built to run in any phone browser and install to your home screen like an app (works offline, no account, nothing to download from a store).
+A free, **ad-free** collection of the games I actually like to play — built to run in any phone browser and install to hopefully be able to add to your home screen like an app in the future.
 
 ## Why I made this
 
