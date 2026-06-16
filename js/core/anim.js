@@ -34,42 +34,34 @@ export function flipRender(container, paint, opts = {}) {
   paint();
 
   if (!container) return;
-  const movers = [];
+  // Drive the animation with the Web Animations API rather than inline
+  // transform + setTimeout cleanup. Animations finish on their own and leave
+  // the element at its natural position, so nothing can get "stuck" no matter
+  // how fast repaints happen (rapid taps just start fresh animations).
   container.querySelectorAll("[data-cid]").forEach((el) => {
     const f = first.get(el.dataset.cid);
     const l = el.getBoundingClientRect();
+    let fromX, fromY, scale = 1, z = "60";
     if (f) {
-      const dx = f.left - l.left, dy = f.top - l.top;
-      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-        el.style.transition = "none";
-        el.style.transform = `translate(${dx}px, ${dy}px)`;
-        el.style.zIndex = "60";
-        movers.push(el);
-      }
+      fromX = f.left - l.left; fromY = f.top - l.top;
+      if (Math.abs(fromX) < 0.5 && Math.abs(fromY) < 0.5) return; // didn't move
     } else if (origin) {
-      // newly drawn/dealt: slide from the deck, on top of what was there
-      const dx = origin.left + origin.width / 2 - (l.left + l.width / 2);
-      const dy = origin.top + origin.height / 2 - (l.top + l.height / 2);
-      el.style.transition = "none";
-      el.style.transform = `translate(${dx}px, ${dy}px) scale(.96)`;
-      el.style.zIndex = "70";
-      movers.push(el);
-    } else if (!opts.noEnter) {
-      el.classList.add("eg-enter");
+      fromX = origin.left + origin.width / 2 - (l.left + l.width / 2);
+      fromY = origin.top + origin.height / 2 - (l.top + l.height / 2);
+      scale = 0.96; z = "70";
+    } else {
+      if (!opts.noEnter) el.classList.add("eg-enter");
+      return;
     }
-  });
-
-  if (movers.length) {
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        for (const el of movers) {
-          el.style.transition = `transform ${dur}ms cubic-bezier(.2,.8,.3,1)`;
-          el.style.transform = "none";
-        }
-      })
+    if (!el.animate) return; // no WAAPI → layout is already correct, just no slide
+    const prevZ = el.style.zIndex;
+    el.style.zIndex = z;
+    const anim = el.animate(
+      [{ transform: `translate(${fromX}px, ${fromY}px) scale(${scale})` }, { transform: "none" }],
+      { duration: dur, easing: "cubic-bezier(.2,.8,.3,1)" }
     );
-    setTimeout(() => {
-      for (const el of movers) { el.style.transition = ""; el.style.transform = ""; el.style.zIndex = ""; }
-    }, dur + 70);
-  }
+    const clear = () => { el.style.zIndex = prevZ; };
+    anim.onfinish = clear;
+    anim.oncancel = clear;
+  });
 }
