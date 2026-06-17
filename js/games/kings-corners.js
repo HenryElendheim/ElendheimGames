@@ -15,7 +15,7 @@ const STYLE = `
 .kc-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:10px; padding:12px 10px 8px; }
 .kc-msg { font-size:14px; font-weight:700; min-height:20px; text-align:center; color:var(--text-dim); letter-spacing:.02em; }
 .kc-msg b { color:#fff; }
-.kc-board { display:grid; grid-template-columns:repeat(3, 1fr); gap:9px; width:100%; max-width:280px; }
+.kc-board { display:grid; grid-template-columns:repeat(3, 1fr); gap:9px; width:100%; max-width:280px; margin:30px 0 14px; }
 .kc-cell { aspect-ratio:5/7; border-radius:9px; position:relative; display:grid; place-items:center; }
 .kc-slot { width:100%; height:100%; border-radius:9px; border:2px dashed rgba(255,255,255,.18); display:grid; place-items:center; }
 .kc-slot.corner { border-style:dotted; }
@@ -25,10 +25,23 @@ const STYLE = `
   user-select:none; }
 .kc-card.red { color:#d63a2f; }
 .kc-card .rk { position:absolute; top:3px; left:5px; font-size:12px; line-height:1; }
+.kc-card .rk-br { top:auto; left:auto; bottom:3px; right:5px; }
 .kc-card.back { background:repeating-linear-gradient(45deg,#caa017,#caa017 5px,#a8830f 5px,#a8830f 10px); color:#fff; }
-.kc-cell.target .kc-card, .kc-cell.target .kc-slot { outline:3px solid var(--kc-glow,#ffd75e); outline-offset:1px; box-shadow:0 0 14px var(--kc-glow,#ffd75e); }
+/* lead card peeking out from under the top of a pile */
+.kc-cell .kc-top { position:relative; z-index:1; }
+.kc-base { position:absolute; left:0; top:0; width:100%; height:100%; z-index:0;
+  box-shadow:0 2px 6px rgba(0,0,0,.55); }
+.kc-base.kc-peek-u  { top:-34%; }
+.kc-base.kc-peek-d  { top:34%; }
+.kc-base.kc-peek-l  { left:-44%; }
+.kc-base.kc-peek-r  { left:44%; }
+.kc-base.kc-peek-ul { top:-32%; left:-32%; }
+.kc-base.kc-peek-ur { top:-32%; left:32%; }
+.kc-base.kc-peek-dl { top:32%; left:-32%; }
+.kc-base.kc-peek-dr { top:32%; left:32%; }
+.kc-cell.target .kc-top, .kc-cell.target .kc-slot { outline:3px solid var(--kc-glow,#ffd75e); outline-offset:1px; box-shadow:0 0 14px var(--kc-glow,#ffd75e); }
 .kc-cell.target .kc-slot { border-color:var(--kc-glow,#ffd75e); }
-.kc-cell.sel .kc-card { outline:3px solid #fff; outline-offset:1px; }
+.kc-cell.sel .kc-top { outline:3px solid #fff; outline-offset:1px; }
 .kc-stock { position:relative; cursor:default; }
 .kc-stock .cnt { position:absolute; bottom:3px; right:5px; font-size:11px; font-weight:800; color:#fff;
   text-shadow:0 1px 2px #000; }
@@ -98,19 +111,26 @@ export default function init(api) {
   }
 
   // --- rendering ---
-  function cardFace(c, cls = "") {
+  function cardFace(c, cls = "", base = false) {
     const el = document.createElement("div");
     el.className = "kc-card" + (c.c === "r" ? " red" : "") + (cls ? " " + cls : "");
     if (c.s) el.dataset.cid = c.s + c.r;
-    el.innerHTML = `<span class="rk">${c.r}</span>${c.s}`;
+    // base (lead) cards peek out from under the pile — a second rank in the
+    // opposite corner guarantees the value is readable whichever way it pokes.
+    el.innerHTML = `<span class="rk">${c.r}</span>${c.s}` + (base ? `<span class="rk rk-br">${c.r}</span>` : "");
     return el;
   }
 
-  function pileCell(pile) {
+  function pileCell(pile, peek) {
     const cell = document.createElement("div");
     cell.className = "kc-cell";
     if (pile.cards.length) {
-      cell.append(cardFace(pile.cards[pile.cards.length - 1]));
+      // show the bottom (lead) card peeking outward so you can read what the
+      // pile was started from / what its stack would move as
+      if (pile.cards.length >= 2) {
+        cell.append(cardFace(pile.cards[0], "kc-base kc-peek-" + peek, true));
+      }
+      cell.append(cardFace(pile.cards[pile.cards.length - 1], "kc-top"));
     } else {
       const slot = document.createElement("div");
       slot.className = "kc-slot" + (pile.type === "corner" ? " corner" : "");
@@ -151,9 +171,14 @@ export default function init(api) {
     flipRender(wrap, paint, { origin: () => wrap.querySelector(".kc-stock") });
   }
   function paint() {
-    // grid order: TL, N, TR / W, stock, E / BL, S, BR
-    const order = [corners[0], edges[0], corners[1], edges[3], "stock", edges[1], corners[2], edges[2], corners[3]];
-    board.replaceChildren(...order.map((p) => (p === "stock" ? stockCell() : pileCell(p))));
+    // grid order: TL, N, TR / W, stock, E / BL, S, BR — each pile's lead card
+    // peeks toward the outside of the cross (the second value is the peek dir)
+    const order = [
+      [corners[0], "ul"], [edges[0], "u"], [corners[1], "ur"],
+      [edges[3], "l"], "stock", [edges[1], "r"],
+      [corners[2], "dl"], [edges[2], "d"], [corners[3], "dr"],
+    ];
+    board.replaceChildren(...order.map((p) => (p === "stock" ? stockCell() : pileCell(p[0], p[1]))));
 
     handEl.replaceChildren(
       ...hand.map((c, i) => {

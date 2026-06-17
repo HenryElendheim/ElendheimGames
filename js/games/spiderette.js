@@ -8,8 +8,8 @@
    Tracks: wins + streak.
    ============================================================ */
 
-import { uiIcon } from "../core/icons.js";
 import { flipRender } from "../core/anim.js";
+import { shake, bestDestination } from "../core/cards.js";
 
 const COLS = 7;
 const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
@@ -42,13 +42,13 @@ const STYLE = `
 .sp-back, .sp-card.down { background:linear-gradient(160deg,#9a6cf0,#6b3fcf);
   box-shadow:inset 0 2px 0 rgba(255,255,255,.3), inset 0 0 0 1px rgba(255,255,255,.18), 0 1px 2px rgba(0,0,0,.45);
   border-radius:8px; }
-.sp-back svg { position:absolute; inset:14% 26%; }
+/* face-up cards that can't be picked up (not the start of a movable run) are muted */
+.sp-card.blocked { background:#a7a199; }
 .sp-card .sp-rk { position:absolute; top:3px; left:6px; font-size:16px; font-weight:800; line-height:1; }
-.sp-card .sp-cs { position:absolute; top:5px; left:22px; font-size:11px; line-height:1; }
-.sp-card .sp-pip { position:absolute; left:0; right:0; bottom:6px; text-align:center; font-size:30px; line-height:1; }
+.sp-card .sp-cs { position:absolute; top:4px; right:6px; font-size:14px; line-height:1; }
+.sp-card .sp-pip { position:absolute; left:0; right:0; bottom:7px; text-align:center; font-size:40px; line-height:1; }
 .sp-card.navy .sp-rk, .sp-card.navy .sp-cs, .sp-card.navy .sp-pip { color:#15294f; }
 .sp-card.red .sp-rk, .sp-card.red .sp-cs, .sp-card.red .sp-pip { color:#d63a2f; }
-.sp-card.sel { box-shadow:0 0 0 2px var(--accent), 0 3px 9px rgba(0,0,0,.55); z-index:3; }
 
 @keyframes sp-drop { from { transform:translateY(-30px); opacity:.2; } to { transform:none; opacity:1; } }
 .sp-anim-deal { animation:sp-drop .22s ease both; }
@@ -151,7 +151,7 @@ export default function init(api) {
   const SUITS = { EASY: 1, MEDIUM: 1, HARD: 1, "ULTRA HARD": 2, INSANITY: 4 };
   const suitCount = SUITS[api.settings.difficulty] || 1;
 
-  let cols, stock, completed, selected, history, won;
+  let cols, stock, completed, history, won;
   let pendingAnims = [];
   let generating = false;
   let genToken = 0;
@@ -166,7 +166,6 @@ export default function init(api) {
   const colEls = Array.from({ length: COLS }, (_, j) => {
     const c = document.createElement("div");
     c.className = "sp-col";
-    c.addEventListener("click", () => onColumn(j));
     colsEl.append(c);
     return c;
   });
@@ -201,9 +200,10 @@ export default function init(api) {
   function buildDeck() {
     const copies = 4 / suitCount;
     const deck = [];
+    let uid = 0; // unique per physical card — single-suit decks repeat rank+suit
     for (let n = 0; n < copies; n++)
       for (let i = 0; i < suitCount; i++)
-        for (let r = 1; r <= 13; r++) deck.push({ rank: r, suit: i, faceUp: false });
+        for (let r = 1; r <= 13; r++) deck.push({ rank: r, suit: i, faceUp: false, uid: uid++ });
     for (let i = deck.length - 1; i > 0; i--) {
       const j = (Math.random() * (i + 1)) | 0;
       [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -228,7 +228,6 @@ export default function init(api) {
     cols = layout.cols;
     stock = layout.stock;
     completed = 0;
-    selected = null;
     history = [];
     won = false;
     generating = false;
@@ -258,7 +257,6 @@ export default function init(api) {
     cols = Array.from({ length: COLS }, () => []);
     stock = [];
     won = false;
-    selected = null;
     history = [];
     completed = 0;
     pendingAnims = [];
@@ -281,7 +279,6 @@ export default function init(api) {
   function deal() {
     if (won || generating || !stock.length) return;
     pushHistory();
-    selected = null;
     pendingAnims = [];
     for (let j = 0; j < COLS && stock.length; j++) {
       const card = stock.pop();
@@ -305,38 +302,48 @@ export default function init(api) {
     return true;
   }
 
-  function onCard(j, idx, ev) {
-    ev.stopPropagation();
-    if (won || generating) return;
-    if (selected) return onColumn(j);
-    if (validRun(cols[j], idx)) {
-      selected = { j, idx };
-      render();
-    }
+  // a run can drop on column j if it lands on a card one higher (any suit), or
+  // onto an empty column — but auto-move only uses an empty column when doing so
+  // exposes a face-down card (idx > 0), never to pointlessly relocate a whole pile
+  function canDrop(run, idx, src, j) {
+    if (j === src) return false;
+    const d = cols[j];
+    if (d.length === 0) return idx > 0;
+    const t = d[d.length - 1];
+    return t.faceUp && t.rank === run[0].rank + 1;
+  }
+  // rank ties on a matching card; prefer same-suit (builds toward a clearable
+  // run) over a different suit, and either over dumping into an empty column
+  function dropScore(run, j) {
+    const d = cols[j];
+    if (d.length === 0) return 1;
+    return d[d.length - 1].suit === run[0].suit ? 30 : 10;
   }
 
-  function onColumn(j) {
-    if (won || !selected) return;
-    if (selected.j === j) {
-      selected = null;
-      return render();
-    }
-    const run = cols[selected.j].slice(selected.idx);
-    const dest = cols[j];
-    const ok = dest.length === 0 || (dest[dest.length - 1].faceUp && dest[dest.length - 1].rank === run[0].rank + 1);
-    if (!ok) {
-      selected = null;
-      return render();
-    }
+  // tap a card → fly the run it starts to the best legal column (Solitaire-style)
+  function onCard(j, idx, ev) {
+    if (won || generating) return;
+    const cardEl = ev.currentTarget;
+    if (!validRun(cols[j], idx)) return shake(cardEl);
+    const run = cols[j].slice(idx);
+    const dst = bestDestination(
+      Array.from({ length: COLS }, (_, k) => k),
+      (k) => canDrop(run, idx, j, k),
+      (k) => dropScore(run, k)
+    );
+    if (dst == null) return shake(cardEl);
+    move(j, idx, dst);
+  }
+
+  function move(src, idx, dst) {
     pushHistory();
-    const src = selected.j;
-    const destStart = dest.length;
-    cols[src].splice(selected.idx);
-    dest.push(...run);
-    pendingAnims = [{ j, from: destStart, cls: "sp-anim-move" }];
+    const run = cols[src].slice(idx);
+    const destStart = cols[dst].length;
+    cols[src].splice(idx);
+    cols[dst].push(...run);
+    pendingAnims = [{ j: dst, from: destStart, cls: "sp-anim-move" }];
     if (flip(src)) pendingAnims.push({ j: src, from: cols[src].length - 1, only: true, cls: "sp-anim-flip" });
-    selected = null;
-    checkComplete(j);
+    checkComplete(dst);
     setFooter();
     render();
     checkWin();
@@ -366,7 +373,6 @@ export default function init(api) {
   function checkWin() {
     if (completed < 4) return;
     won = true;
-    selected = null;
     api.reportWin();
     pills();
     setFooter();
@@ -388,7 +394,6 @@ export default function init(api) {
     cols = prev.cols;
     stock = prev.stock;
     completed = prev.completed;
-    selected = null;
     pendingAnims = [];
     setFooter();
     render();
@@ -404,7 +409,6 @@ export default function init(api) {
       const back = document.createElement("div");
       back.className = "sp-back";
       back.style.left = i * 11 + "px";
-      if (i === shown - 1) back.append(uiIcon("spider"));
       stockEl.append(back);
     }
   }
@@ -421,9 +425,9 @@ export default function init(api) {
       cols[j].forEach((card, idx) => {
         const def = SUIT_DEFS[card.suit];
         const cardEl = document.createElement("div");
-        cardEl.className = "sp-card" + (card.faceUp ? (def.red ? " red" : " navy") : " down");
-        cardEl.dataset.cid = card.suit + "-" + card.rank;
-        if (selected && selected.j === j && idx >= selected.idx) cardEl.classList.add("sel");
+        const blocked = card.faceUp && !validRun(cols[j], idx); // can't be picked up
+        cardEl.className = "sp-card" + (card.faceUp ? (def.red ? " red" : " navy") : " down") + (blocked ? " blocked" : "");
+        cardEl.dataset.cid = card.uid;
         if (card.faceUp)
           cardEl.innerHTML = `<span class="sp-rk">${RANKS[card.rank - 1]}</span><span class="sp-cs">${def.s}</span><span class="sp-pip">${def.s}</span>`;
         cardEl.addEventListener("click", (ev) => onCard(j, idx, ev));

@@ -45,12 +45,14 @@ export function flipRender(container, paint, opts = {}) {
     if (f) {
       fromX = f.left - l.left; fromY = f.top - l.top;
       if (Math.abs(fromX) < 0.5 && Math.abs(fromY) < 0.5) return; // didn't move
-    } else if (origin) {
+    } else if (origin && !el.dataset.nofly) {
       fromX = origin.left + origin.width / 2 - (l.left + l.width / 2);
       fromY = origin.top + origin.height / 2 - (l.top + l.height / 2);
       scale = 0.96; z = "70";
     } else {
-      if (!opts.noEnter) el.classList.add("eg-enter");
+      // nofly cards (e.g. a backdrop card revealed from beneath a pile) just
+      // appear in place — they never fly from the deck and never fade in.
+      if (!opts.noEnter && !el.dataset.nofly) el.classList.add("eg-enter");
       return;
     }
     if (!el.animate) return; // no WAAPI → layout is already correct, just no slide

@@ -12,6 +12,7 @@
    ============================================================ */
 
 import { flipRender } from "../core/anim.js";
+import { shake, bestDestination } from "../core/cards.js";
 
 const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 const SUITS = [
@@ -46,7 +47,6 @@ const STYLE = `
 .so-card.navy .so-rk, .so-card.navy .so-cs, .so-card.navy .so-pip { color:#15294f; }
 .so-card.red .so-rk, .so-card.red .so-cs, .so-card.red .so-pip { color:#d63a2f; }
 .so-card.lift { opacity:.32; }
-.so-card.bad { animation:so-shake .32s ease; }
 .so-stockback { width:100%; height:100%; border-radius:7px; background:linear-gradient(160deg,#9a6cf0,#6b3fcf);
   box-shadow:inset 0 2px 0 rgba(255,255,255,.3), inset 0 0 0 1px rgba(255,255,255,.18); }
 .so-recycle { width:100%; height:100%; display:grid; place-items:center; font-size:24px; color:rgba(255,255,255,.4); }
@@ -61,7 +61,6 @@ const STYLE = `
 @keyframes so-pop { from{transform:scale(.85);} to{transform:scale(1);} }
 @keyframes so-flip { from{transform:rotateY(90deg);} to{transform:rotateY(0);} }
 .so-anim-flip { animation:so-flip .26s ease; }
-@keyframes so-shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-5px);} 75%{transform:translateX(5px);} }
 `;
 
 export default function init(api) {
@@ -281,22 +280,14 @@ export default function init(api) {
     if (won) return;
     if (source.type === "found") return; // pulling off a foundation is drag-only
     if (cards.length === 1) {
-      for (let i = 0; i < 4; i++) if (canFound(cards[0], i)) return doMove(source, "found", i);
+      const fi = bestDestination([0, 1, 2, 3], (i) => canFound(cards[0], i));
+      if (fi != null) return doMove(source, "found", fi);
     }
-    let emptyTarget = -1;
-    for (let j = 0; j < 7; j++) {
-      if (source.type === "tab" && source.col === j) continue;
-      if (!canTab(cards[0], j)) continue;
-      if (tableau[j].length) return doMove(source, "col", j);
-      if (emptyTarget < 0) emptyTarget = j;
-    }
-    if (emptyTarget >= 0) return doMove(source, "col", emptyTarget);
-    // nothing legal — nudge the card
-    if (el) {
-      el.classList.remove("bad");
-      void el.offsetWidth;
-      el.classList.add("bad");
-    }
+    // prefer a non-empty legal column over an empty one (score 1 vs 0)
+    const cols = [0, 1, 2, 3, 4, 5, 6].filter((j) => !(source.type === "tab" && source.col === j));
+    const col = bestDestination(cols, (j) => canTab(cards[0], j), (j) => (tableau[j].length ? 1 : 0));
+    if (col != null) return doMove(source, "col", col);
+    shake(el); // nothing legal — nudge the card
   }
 
   /* ---- pointer gesture: tap to auto-move, hold/drag to carry ---- */
@@ -449,6 +440,7 @@ export default function init(api) {
       under.style.position = "absolute";
       under.style.inset = "0";
       under.style.pointerEvents = "none";
+      under.dataset.nofly = "1"; // backdrop only — must never fly in from the deck
       wasteEl.append(under);
     }
     if (waste.length) {
@@ -467,6 +459,10 @@ export default function init(api) {
         const c = faceCard(f[f.length - 1]);
         c.style.position = "absolute";
         c.style.inset = "0";
+        // a card sliding INTO a foundation is tracked by data-cid (it slides
+        // from its source); nofly only stops a card *revealed from beneath*
+        // (e.g. after dragging one off) from flying in from the deck.
+        c.dataset.nofly = "1";
         if (lift && lift.type === "found" && lift.i === i) c.classList.add("lift");
         c.addEventListener("pointerdown", (e) => beginGesture(e, { type: "found", i }, c));
         el.append(c);

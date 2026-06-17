@@ -36,21 +36,31 @@ const PST_KNIGHT = [
 ];
 
 const STYLE = `
-.ch-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:10px; padding:10px; }
-.ch-status { font-size:16px; font-weight:700; color:var(--text-dim); min-height:22px; }
+.ch-wrap { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:10px; }
+.ch-status { font-size:16px; font-weight:800; color:var(--text-dim); min-height:22px; letter-spacing:.01em; }
 .ch-board { display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr);
-  width:min(94vw,420px); aspect-ratio:1; border-radius:10px; overflow:hidden; box-shadow:var(--shadow); touch-action:manipulation; }
-.ch-sq { position:relative; display:grid; place-items:center; font-size:clamp(20px,8vw,40px); line-height:1; }
-.ch-sq.light { background:#cdd3e0; } .ch-sq.dark { background:#6c7aa3; }
-.ch-sq.sel { background:#f5d36b !important; }
-.ch-sq.check { background:#ef5350 !important; }
-.ch-sq .pc { width:84%; height:84%; display:block; filter:drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
-.ch-sq .pc.w text { fill:#fbfbfb; } .ch-sq .pc.b text { fill:#1a1d24; }
-.ch-sq .dot { position:absolute; width:26%; height:26%; border-radius:50%; background:rgba(0,0,0,.35); }
-.ch-sq .ring { position:absolute; inset:6%; border-radius:50%; box-shadow:inset 0 0 0 4px rgba(0,0,0,.3); }
+  width:min(94vw,440px); aspect-ratio:1; border-radius:12px; overflow:hidden; touch-action:manipulation;
+  box-shadow:0 12px 30px rgba(0,0,0,.5), 0 0 0 4px #2b3350, 0 0 0 5px rgba(255,255,255,.06); }
+.ch-sq { position:relative; display:grid; place-items:center; line-height:1; }
+.ch-sq.light { background:#e9edf6; } .ch-sq.dark { background:#5b6796; }
+/* highlights drawn as inset tints so the piece + square colour still show through */
+.ch-sq.lastmv { box-shadow:inset 0 0 0 100px rgba(245,211,107,.26); }
+.ch-sq.check  { box-shadow:inset 0 0 0 100px rgba(239,83,80,.55); }
+.ch-sq.sel    { box-shadow:inset 0 0 0 100px rgba(245,211,107,.5); }
+.ch-sq .pc { width:90%; height:90%; display:block; filter:drop-shadow(0 2px 2px rgba(0,0,0,.45)); }
+.ch-sq .pc text { paint-order:stroke; stroke-linejoin:round; }
+.ch-sq .pc.w text { fill:#f7f9fd; stroke:#15171e; stroke-width:3.4; }
+.ch-sq .pc.b text { fill:#23262f; stroke:#b6bed0; stroke-width:1.8; }
+.ch-sq .dot { position:absolute; width:30%; height:30%; border-radius:50%; background:rgba(20,30,55,.32); }
+.ch-sq .ring { position:absolute; inset:5%; border-radius:50%; box-shadow:inset 0 0 0 5px rgba(20,30,55,.32); }
+/* coordinate labels on the edge squares */
+.ch-sq[data-file]::after { content:attr(data-file); position:absolute; right:4px; bottom:2px; font-size:10px; font-weight:800; }
+.ch-sq[data-rank]::before { content:attr(data-rank); position:absolute; left:4px; top:2px; font-size:10px; font-weight:800; }
+.ch-sq.light[data-file]::after, .ch-sq.light[data-rank]::before { color:rgba(91,103,150,.85); }
+.ch-sq.dark[data-file]::after, .ch-sq.dark[data-rank]::before { color:rgba(233,237,246,.9); }
 .ch-promo { position:absolute; inset:0; background:rgba(0,0,0,.6); display:grid; place-items:center; z-index:5; }
 .ch-promo .row { display:flex; gap:8px; background:var(--surface); padding:12px; border-radius:14px; }
-.ch-promo button { width:52px; height:52px; font-size:34px; background:#cdd3e0; border-radius:10px; color:#1a1d24; }
+.ch-promo button { width:52px; height:52px; font-size:34px; background:#e9edf6; border-radius:10px; color:#1a1d24; }
 `;
 
 export default function init(api) {
@@ -62,7 +72,7 @@ export default function init(api) {
   const depth = { EASY: 1, MEDIUM: 2, HARD: 3 }[api.settings.difficulty] || 2;
   const session = { w: 0, b: 0 };
 
-  let state, selected, legal, over;
+  let state, selected, legal, over, lastMove;
 
   const status = document.createElement("div");
   status.className = "ch-status";
@@ -79,6 +89,8 @@ export default function init(api) {
     for (let c = 0; c < 8; c++) {
       const sq = document.createElement("div");
       sq.className = "ch-sq " + ((r + c) % 2 ? "dark" : "light");
+      if (r === 7) sq.dataset.file = "abcdefgh"[c]; // files along the bottom rank
+      if (c === 0) sq.dataset.rank = String(8 - r); // ranks down the left file
       sq.addEventListener("click", () => onSquare(r, c));
       boardEl.append(sq);
       sqEls[r][c] = sq;
@@ -101,6 +113,7 @@ export default function init(api) {
     selected = null;
     legal = [];
     over = false;
+    lastMove = null;
     pills();
     updateStatus();
     render();
@@ -142,6 +155,11 @@ export default function init(api) {
           sq.append(pieceSvg(p));
         }
       }
+    // last move (from + to squares)
+    if (lastMove) {
+      sqEls[lastMove.from[0]][lastMove.from[1]].classList.add("lastmv");
+      sqEls[lastMove.to[0]][lastMove.to[1]].classList.add("lastmv");
+    }
     // king in check
     if (!over) {
       const k = findKing(state.board, state.turn);
@@ -187,6 +205,7 @@ export default function init(api) {
 
   function finishMove(move) {
     state = applyMove(state, move);
+    lastMove = move;
     selected = null;
     legal = [];
     render();
@@ -197,6 +216,7 @@ export default function init(api) {
         const m = chooseComputerMove(state, depth);
         if (m) {
           state = applyMove(state, m);
+          lastMove = m;
           render();
           if (endIfOver()) return;
         }

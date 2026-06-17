@@ -399,3 +399,44 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 .placeholder .ph-emoji svg,
 .placeholder .ph-emoji img { width: 80px; height: 80px; object-fit: contain; }
 .placeholder b { color: var(--text); font-size: 20px; }
+
+/* ============================================================
+   DESKTOP / LARGE SCREEN
+   The app is portrait-locked, so on a wide screen we present it as a
+   centered "device" on a soft backdrop instead of a column floating in
+   a dark void. Below this breakpoint the app stays full-bleed (mobile).
+   ============================================================ */
+@media (min-width: 720px) {
+  body {
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(1200px 760px at 50% -12%, #24262f, transparent 60%),
+      radial-gradient(900px 620px at 50% 118%, #191a21, transparent 55%),
+      #0c0d11;
+  }
+  #app {
+    width: min(var(--maxw), 100vw);
+    height: min(920px, 100vh - 40px);
+    max-height: 100vh;
+    border-radius: 30px;
+    overflow: hidden;
+    background: var(--bg);
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.07);
+  }
+}
+
+/* Mouse (fine pointer) affordances — hover cues the touch UI doesn't need. */
+@media (hover: hover) and (pointer: fine) {
+  .tile, .icon-btn, .footer-btn:not(:disabled), .chip,
+  .seg button, .swatch, .star, .btn-play, .btn-menu { cursor: pointer; }
+  .tile { transition: transform .12s, border-color .12s, box-shadow .12s; }
+  .tile:hover { transform: translateY(-3px); border-color: rgba(255, 255, 255, 0.18); box-shadow: var(--shadow); }
+  .icon-btn:hover { background: var(--surface-2); }
+  .footer-btn:not(:disabled):hover .fb-ico { filter: brightness(1.12); }
+  .seg button:not(.active):hover { color: var(--text); }
+  /* slim, themed scrollbar for the in-app lists on desktop */
+  .screen::-webkit-scrollbar { width: 8px; }
+  .screen::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); border-radius: 8px; }
+  .screen::-webkit-scrollbar-track { background: transparent; }
+}
