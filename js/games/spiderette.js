@@ -36,7 +36,12 @@ const STYLE = `
 .sp-bcount { position:absolute; right:-4px; bottom:-4px; min-width:18px; height:18px; padding:0 4px; border-radius:9px;
   background:var(--accent,#f0a32a); color:#1a1300; font-size:11px; font-weight:800; display:grid; place-items:center;
   box-shadow:0 1px 2px rgba(0,0,0,.5); z-index:9; }
-.sp-fly { position:fixed; z-index:80; border-radius:8px; pointer-events:none; will-change:transform; }
+/* fly clones: .sp-card sets position:relative LATER in this sheet, so the
+   completed-run clones MUST out-specify it or they fall into body flow and
+   strand off-screen. Keep the .sp-card.sp-fly compound selector. */
+.sp-card.sp-fly { position:fixed; z-index:80; border-radius:8px; pointer-events:none; will-change:transform, opacity; margin:0 !important; }
+.sp-spark { position:fixed; z-index:79; pointer-events:none; will-change:transform, opacity;
+  color:#ffd773; font-size:14px; line-height:1; text-shadow:0 0 6px rgba(255,200,90,.9); }
 .sp-stock { position:relative; height:66px; cursor:pointer; }
 .sp-stock.empty { opacity:.25; cursor:default; }
 .sp-stock .sp-back { position:absolute; top:0; width:46px; height:64px; }
@@ -169,6 +174,7 @@ export default function init(api) {
   let generating = false;
   let genToken = 0;
   let winPending = false;
+  let bunchPending = 0; // completed runs currently in flight (not yet shown in the bunch)
   const flyEls = []; // transient fly clones, cleared on destroy
 
   const bunchEl = document.createElement("div");
@@ -242,11 +248,12 @@ export default function init(api) {
   }
 
   function applyLayout(layout) {
+    clearFly(); // drop any in-flight completion clones from a previous game
+    bunchPending = 0;
     cols = layout.cols;
     stock = layout.stock;
     completed = 0;
     completedRuns = [];
-    clearFly();
     history = [];
     won = false;
     winPending = false;
@@ -410,39 +417,85 @@ export default function init(api) {
     if (did) { pendingAnims = flipAnims; render(); }
   }
 
-  // fly the completed run's cards from their spots into the corner bunch
+  // fly the completed run's cards from their spots up into the corner bunch:
+  // a staggered fan that arcs toward the top-left and trails gold sparkles,
+  // then collapses into the bunch (cf. the reference recording).
   function flyToBunch(runEls, suit) {
+    bunchPending++; // keep this run out of the bunch until its cards arrive
     const t = bunchEl.getBoundingClientRect();
     const tcx = t.left + t.width / 2, tcy = t.top + t.height / 2;
-    const clones = runEls.map((src) => {
+    // runEls are K(0)…A(12). Stagger by index so the King leaves first and the
+    // Ace flies in last (after the 2); z-order is reversed so the King sits on
+    // top and the Ace tucks in at the bottom of the pile when it lands.
+    const clones = runEls.map((src, i) => {
       const r = src.getBoundingClientRect();
       const cl = src.cloneNode(true);
       cl.className = "sp-card sp-fly " + (suit === 1 || suit === 2 ? "red" : "navy");
-      Object.assign(cl.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px", margin: "0" });
+      Object.assign(cl.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px", zIndex: String(80 + (runEls.length - 1 - i)) });
       document.body.append(cl);
       flyEls.push(cl);
       return { cl, r };
     });
+    // trail origin = the run's lower card (where the fan lifts off)
+    const last = clones[clones.length - 1].r;
+    const DUR = 520, STAG = 24;
     requestAnimationFrame(() => {
       let done = false;
-      const finish = () => { if (done) return; done = true; clones.forEach(({ cl }) => removeFly(cl)); popBunch(); };
+      const finish = () => {
+        if (done) return;
+        done = true;
+        clones.forEach(({ cl }) => removeFly(cl));
+        if (bunchPending > 0) bunchPending--; // cards have landed → reveal this run in the bunch
+        renderBunch();
+        popBunch();
+      };
       clones.forEach(({ cl, r }, i) => {
         const dx = tcx - (r.left + r.width / 2), dy = tcy - (r.top + r.height / 2);
-        const rot = (i % 2 ? 1 : -1) * (5 + (i % 4) * 4);
+        const bow = (i % 2 ? 1 : -1) * (18 + (i % 3) * 10); // sideways bow → arc, not a straight line
+        const rot = (i % 2 ? 1 : -1) * (6 + (i % 4) * 5);
         if (!cl.animate) { removeFly(cl); return; }
         const a = cl.animate(
           [
             { transform: "translate(0,0) scale(1) rotate(0deg)", opacity: 1 },
-            { transform: `translate(${dx * 0.45}px,${dy * 0.45}px) scale(.9) rotate(${rot / 2}deg)`, opacity: 1, offset: 0.45 },
-            { transform: `translate(${dx}px,${dy}px) scale(.6) rotate(${rot}deg)`, opacity: 0.96 },
+            { transform: `translate(${dx * 0.5 + bow}px,${dy * 0.5 - 14}px) scale(.92) rotate(${rot / 2}deg)`, opacity: 1, offset: 0.5 },
+            { transform: `translate(${dx}px,${dy}px) scale(.5) rotate(${rot}deg)`, opacity: 0.92 },
           ],
-          { duration: 470, delay: i * 26, easing: "cubic-bezier(.45,0,.35,1)", fill: "forwards" }
+          { duration: DUR, delay: i * STAG, easing: "cubic-bezier(.45,.02,.35,1)", fill: "forwards" }
         );
         if (i === clones.length - 1) { a.onfinish = finish; a.oncancel = finish; }
       });
+      spawnSparkles(last.left + last.width / 2, last.top + last.height / 2, tcx, tcy, DUR + clones.length * STAG);
       // safety net in case the last animation never fires onfinish
-      setTimeout(finish, 470 + clones.length * 26 + 260);
+      setTimeout(finish, DUR + clones.length * STAG + 280);
     });
+  }
+  // gold stars scattered along the flight path, lighting up source→bunch
+  function spawnSparkles(x0, y0, x1, y1, span) {
+    const N = 15, glyphs = ["✦", "✧", "⋆", "✦"];
+    const nx = -(y1 - y0), ny = x1 - x0, nl = Math.hypot(nx, ny) || 1;
+    for (let i = 0; i < N; i++) {
+      const f = i / (N - 1);
+      const off = (Math.random() * 2 - 1) * 28;
+      const sx = x0 + (x1 - x0) * f + (nx / nl) * off + (Math.random() * 2 - 1) * 8;
+      const sy = y0 + (y1 - y0) * f + (ny / nl) * off + (Math.random() * 2 - 1) * 8;
+      const s = document.createElement("div");
+      s.className = "sp-spark";
+      s.textContent = glyphs[i % glyphs.length];
+      s.style.left = sx + "px"; s.style.top = sy + "px"; s.style.fontSize = 10 + Math.random() * 10 + "px";
+      document.body.append(s);
+      flyEls.push(s);
+      if (!s.animate) { removeFly(s); continue; }
+      const a = s.animate(
+        [
+          { transform: "scale(0) rotate(0deg)", opacity: 0 },
+          { transform: "scale(1.2) rotate(40deg)", opacity: 1, offset: 0.4 },
+          { transform: "scale(.2) rotate(90deg)", opacity: 0 },
+        ],
+        { duration: 460, delay: 100 + f * (span - 200) + Math.random() * 60, easing: "ease-out", fill: "forwards" }
+      );
+      a.onfinish = () => removeFly(s);
+      a.oncancel = () => removeFly(s);
+    }
   }
   function removeFly(cl) { cl.remove(); const i = flyEls.indexOf(cl); if (i >= 0) flyEls.splice(i, 1); }
   function clearFly() { while (flyEls.length) flyEls.pop().remove(); }
@@ -452,7 +505,8 @@ export default function init(api) {
 
   function renderBunch() {
     bunchEl.replaceChildren();
-    const n = completedRuns.length;
+    // runs still flying aren't shown until their cards land (see flyToBunch)
+    const n = completedRuns.length - bunchPending;
     const show = Math.min(n, 4);
     for (let i = 0; i < show; i++) {
       const suit = completedRuns[n - show + i];
@@ -490,6 +544,8 @@ export default function init(api) {
   function undo() {
     if (!history.length || won) return;
     const prev = JSON.parse(history.pop());
+    clearFly();
+    bunchPending = 0;
     cols = prev.cols;
     stock = prev.stock;
     completed = prev.completed;
