@@ -30,7 +30,7 @@ const STYLE = `
 .so-top { display:grid; grid-template-columns:repeat(7,1fr); gap:${GAP}px; }
 .so-slot { position:relative; aspect-ratio:7/10; border-radius:7px; box-shadow:inset 0 0 0 2px rgba(255,255,255,.1); }
 .so-slot.found { box-shadow:inset 0 0 0 2px rgba(255,255,255,.16); }
-.so-cols { flex:1; display:grid; grid-template-columns:repeat(7,1fr); gap:${GAP}px; align-items:start; overflow-y:auto; padding-bottom:12px; }
+.so-cols { flex:1; display:grid; grid-template-columns:repeat(7,1fr); gap:${GAP}px; align-items:start; overflow-x:hidden; overflow-y:auto; padding-bottom:12px; }
 .so-col { position:relative; min-height:var(--so-ch,72px); border-radius:8px; }
 .so-col.empty { box-shadow:inset 0 0 0 2px rgba(255,255,255,.08); }
 
@@ -60,7 +60,9 @@ const STYLE = `
 
 @keyframes so-pop { from{transform:scale(.85);} to{transform:scale(1);} }
 @keyframes so-flip { from{transform:rotateY(90deg);} to{transform:rotateY(0);} }
-.so-anim-flip { animation:so-flip .26s ease; }
+/* delay + 'both' fill so the freshly-revealed card stays edge-on (hidden) while
+   the moved card slides off, then flips open after it has cleared */
+.so-anim-flip { animation:so-flip .26s ease .22s both; }
 `;
 
 export default function init(api) {
@@ -486,7 +488,7 @@ export default function init(api) {
       if (a.flip) {
         const kids = colEls[a.col].children;
         const last = kids[kids.length - 1];
-        if (last) last.classList.add("so-anim-flip");
+        if (last) { last.classList.add("so-anim-flip"); last.dataset.noslide = "1"; } // stay hidden until the flip plays
       }
     }
     pending = [];
