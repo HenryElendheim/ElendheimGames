@@ -39,6 +39,10 @@ export function flipRender(container, paint, opts = {}) {
   // the element at its natural position, so nothing can get "stuck" no matter
   // how fast repaints happen (rapid taps just start fresh animations).
   container.querySelectorAll("[data-cid]").forEach((el) => {
+    // a card running its own flip-reveal animation must not be slid by FLIP —
+    // let its CSS animation (which keeps it edge-on, then flips it open) own the
+    // transform, otherwise our slide overwrites it and the card shows early.
+    if (el.dataset.noslide) return;
     const f = first.get(el.dataset.cid);
     const l = el.getBoundingClientRect();
     let fromX, fromY, scale = 1, z = "60";

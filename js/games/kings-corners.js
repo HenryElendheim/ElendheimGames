@@ -63,6 +63,8 @@ export default function init(api) {
 
   // --- state ---
   let stock, edges, corners, hand, cpuHand, turn, busy, selHand, selPile, played, stalls;
+  const cellOf = new WeakMap(); // pile -> its current rendered cell (for clear FX)
+  const kcFx = []; // transient poof clones, cleared on destroy
 
   const msg = document.createElement("div");
   msg.className = "kc-msg";
@@ -94,13 +96,14 @@ export default function init(api) {
 
   // can `card` be placed on `pile`?
   function canPlace(card, pile) {
+    if (pile.done) return false; // a completed pile is flipped over — slot is locked
     if (pile.cards.length === 0) return pile.type === "corner" ? card.v === 13 : true;
     const top = pile.cards[pile.cards.length - 1];
     return card.v === top.v - 1 && card.c !== top.c;
   }
   // can the whole `src` pile be moved onto `dst`? (lead = highest = src.cards[0])
   function canMovePile(src, dst) {
-    if (src === dst || src.cards.length === 0) return false;
+    if (src === dst || src.done || src.cards.length === 0) return false;
     return canPlace(src.cards[0], dst);
   }
 
@@ -109,6 +112,43 @@ export default function init(api) {
   function anyHandPlay(h) {
     return h.some((c) => allPiles().some((p) => canPlace(c, p)));
   }
+
+  // A pile is complete once it holds a full King→Ace run (13 cards — every pile
+  // is a strict descending alternating-colour run by the placement rules, so
+  // length 13 means K down to A). Completed piles flip face-down and LOCK: the
+  // slot can't be played on or moved again for the rest of the game.
+  function lockCompletePiles() {
+    const newly = [];
+    for (const p of allPiles()) {
+      if (p.cards.length >= 13 && !p.done) {
+        const cell = cellOf.get(p);
+        const face = cell && (cell.querySelector(".kc-top") || cell.querySelector(".kc-card"));
+        newly.push({ p, rect: face && face.getBoundingClientRect(), faceClone: face && face.cloneNode(true) });
+        p.done = true;
+      }
+    }
+    if (!newly.length) return;
+    render(); // the cell now shows a face-down back
+    newly.forEach(flipOver);
+  }
+  // satisfying flip-over: the face spins away (0→90°) while the back spins in
+  // (-90°→0°), so the completed pile visibly turns face-down in place.
+  function flipOver({ p, rect, faceClone }) {
+    if (!rect || !faceClone || !faceClone.animate) return;
+    Object.assign(faceClone.style, { position: "fixed", left: rect.left + "px", top: rect.top + "px",
+      width: rect.width + "px", height: rect.height + "px", margin: "0", zIndex: "80", pointerEvents: "none",
+      backfaceVisibility: "hidden" });
+    document.body.append(faceClone);
+    kcFx.push(faceClone);
+    const cleanup = () => { faceClone.remove(); const i = kcFx.indexOf(faceClone); if (i >= 0) kcFx.splice(i, 1); };
+    const a = faceClone.animate([{ transform: "rotateY(0deg)" }, { transform: "rotateY(90deg)" }],
+      { duration: 200, easing: "ease-in", fill: "forwards" });
+    a.onfinish = cleanup; a.oncancel = cleanup;
+    const back = cellOf.get(p)?.querySelector(".kc-card.back");
+    if (back) back.animate([{ transform: "rotateY(-90deg)" }, { transform: "rotateY(0deg)" }],
+      { duration: 200, delay: 200, easing: "ease-out", fill: "backwards" });
+  }
+  function clearFx() { while (kcFx.length) kcFx.pop().remove(); }
 
   // --- rendering ---
   function cardFace(c, cls = "", base = false) {
@@ -121,9 +161,23 @@ export default function init(api) {
     return el;
   }
 
+  function backCard() {
+    const back = cardFace({ r: "", s: "", c: "b" }, "back");
+    back.querySelector(".rk").textContent = "";
+    if (back.childNodes[1]) back.childNodes[1].textContent = "";
+    return back;
+  }
+
   function pileCell(pile, peek) {
     const cell = document.createElement("div");
     cell.className = "kc-cell";
+    cellOf.set(pile, cell);
+    if (pile.done) {
+      // completed pile flipped face-down — slot is locked, not interactive
+      cell.classList.add("kc-locked");
+      cell.append(backCard());
+      return cell;
+    }
     if (pile.cards.length) {
       // show the bottom (lead) card peeking outward so you can read what the
       // pile was started from / what its stack would move as
@@ -210,7 +264,7 @@ export default function init(api) {
   }
 
   function onPile(pile) {
-    if (busy || turn !== "you") return;
+    if (busy || turn !== "you" || pile.done) return; // locked piles are inert
     if (selHand != null) {
       const card = hand[selHand];
       if (canPlace(card, pile)) {
@@ -220,6 +274,7 @@ export default function init(api) {
         played = true;
         stalls = 0;
         render();
+        lockCompletePiles();
         if (hand.length === 0) return finish("you");
         setMsg();
       }
@@ -232,6 +287,7 @@ export default function init(api) {
         selPile = null;
         played = true;
         render();
+        lockCompletePiles();
         setMsg();
       } else {
         selPile = selPile === pile ? null : pile.cards.length ? pile : null;
@@ -344,6 +400,7 @@ export default function init(api) {
         progressed = true;
         stalls = 0;
         render();
+        lockCompletePiles();
         if (cpuHand.length === 0) return finish("cpu");
         setTimeout(step, 480);
       } else {
@@ -402,5 +459,5 @@ export default function init(api) {
   }
 
   start();
-  return { destroy: () => style.remove() };
+  return { destroy: () => { clearFx(); style.remove(); } };
 }
