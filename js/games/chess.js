@@ -7,7 +7,18 @@
    Tracks: wins + streak (vs computer).
    ============================================================ */
 
-const GLYPH = { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
+// Vector piece silhouettes (viewBox 0 0 100 100), coloured via fill+stroke in
+// CSS. Drawn as <path> rather than Unicode chess glyphs because iOS/WebKit
+// renders those code points as colour emoji and ignores our fill/stroke, so
+// white and black pieces came out identical. Paths render the same everywhere.
+const PIECE_PATH = {
+  k: "M53 6V12h6v6h-6v7c15 2 20 15 14 29-3 6-7 9-10 12l13 16 2 4H28l2-4 13-16c-3-3-7-6-10-12-6-14-1-27 14-29v-7h-6v-6h6V6z",
+  q: "M20 34l8 16 7-32 7 32 8-34 8 34 7-32 7 32 8-16-6 34 8 6v8H21v-8l8-6z",
+  r: "M28 86v-5l4-4V52l-4-4V34h10v6h7v-6h12v6h7v-6h10v14l-4 4v25l4 4v5z",
+  b: "M45.5 11a4.5 4.5 0 1 1 9 0 4.5 4.5 0 1 1-9 0ZM50 15c8 6 14 16 14 29 0 10-4 17-9 21l3 5 12 10 2 6H28l2-6 12-10 3-5c-5-4-9-11-9-21 0-13 6-23 14-29z",
+  n: "M36 84c-1-12 1-20 7-28 5-7 13-9 13-15 0-2-1-3-1-5-4 3-7 7-12 8-2 0-4-1-4-3 0-9 11-18 24-18 12 0 21 9 22 24 1 13 0 26-2 37z",
+  p: "M50 21c-6.9 0-12.5 5.6-12.5 12.5 0 4 1.9 7.6 4.8 9.9C36 47.5 31.8 56.6 31 66l-1 12-4 4v4h48v-4l-4-4-1-12c-.8-9.4-5-18.5-11.3-22.6 2.9-2.3 4.8-5.9 4.8-9.9C62.5 26.6 56.9 21 50 21z",
+};
 const VALUE = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 0 };
 const KNIGHT = [[-2, -1], [-2, 1], [2, -1], [2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2]];
 const DIAG = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
@@ -48,9 +59,9 @@ const STYLE = `
 .ch-sq.check  { box-shadow:inset 0 0 0 100px rgba(239,83,80,.55); }
 .ch-sq.sel    { box-shadow:inset 0 0 0 100px rgba(245,211,107,.5); }
 .ch-sq .pc { width:90%; height:90%; display:block; filter:drop-shadow(0 2px 2px rgba(0,0,0,.45)); }
-.ch-sq .pc text { paint-order:stroke; stroke-linejoin:round; }
-.ch-sq .pc.w text { fill:#f7f9fd; stroke:#15171e; stroke-width:3.4; }
-.ch-sq .pc.b text { fill:#23262f; stroke:#b6bed0; stroke-width:1.8; }
+.pc path { stroke-linejoin:round; stroke-linecap:round; }
+.pc.w path { fill:#f7f9fd; stroke:#15171e; stroke-width:3.2; }
+.pc.b path { fill:#23262f; stroke:#b6bed0; stroke-width:2.4; }
 .ch-sq .dot { position:absolute; width:30%; height:30%; border-radius:50%; background:rgba(20,30,55,.32); }
 .ch-sq .ring { position:absolute; inset:5%; border-radius:50%; box-shadow:inset 0 0 0 5px rgba(20,30,55,.32); }
 /* coordinate labels on the edge squares */
@@ -60,7 +71,8 @@ const STYLE = `
 .ch-sq.dark[data-file]::after, .ch-sq.dark[data-rank]::before { color:rgba(233,237,246,.9); }
 .ch-promo { position:absolute; inset:0; background:rgba(0,0,0,.6); display:grid; place-items:center; z-index:5; }
 .ch-promo .row { display:flex; gap:8px; background:var(--surface); padding:12px; border-radius:14px; }
-.ch-promo button { width:52px; height:52px; font-size:34px; background:#e9edf6; border-radius:10px; color:#1a1d24; }
+.ch-promo button { width:52px; height:52px; background:#2b3350; border-radius:10px; display:grid; place-items:center; }
+.ch-promo .pc { width:42px; height:42px; display:block; filter:drop-shadow(0 2px 2px rgba(0,0,0,.45)); }
 `;
 
 export default function init(api) {
@@ -129,20 +141,16 @@ export default function init(api) {
   }
 
   const SVG_NS = "http://www.w3.org/2000/svg";
-  function pieceSvg(p) {
+  function makePiece(type, color) {
     const svg = document.createElementNS(SVG_NS, "svg");
     svg.setAttribute("viewBox", "0 0 100 100");
-    svg.setAttribute("class", "pc " + p.color);
-    const t = document.createElementNS(SVG_NS, "text");
-    t.setAttribute("x", "50");
-    t.setAttribute("y", "50");
-    t.setAttribute("text-anchor", "middle");
-    t.setAttribute("dominant-baseline", "central");
-    t.setAttribute("font-size", "88");
-    t.textContent = GLYPH[p.type];
-    svg.append(t);
+    svg.setAttribute("class", "pc " + color);
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", PIECE_PATH[type]);
+    svg.append(path);
     return svg;
   }
+  const pieceSvg = (p) => makePiece(p.type, p.color);
 
   function render() {
     for (let r = 0; r < 8; r++)
@@ -261,7 +269,7 @@ export default function init(api) {
     row.className = "row";
     for (const t of ["q", "r", "b", "n"]) {
       const b = document.createElement("button");
-      b.textContent = GLYPH[t];
+      b.append(makePiece(t, col));
       b.addEventListener("click", () => {
         overlay.remove();
         cb(t);
