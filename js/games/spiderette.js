@@ -26,13 +26,15 @@ const STYLE = `
 .sp-dealing { position:absolute; inset:0; z-index:10; display:grid; place-items:center; text-align:center;
   color:var(--text-dim); font-weight:800; font-size:16px; background:rgba(14,27,43,.55); }
 .sp-top { display:flex; justify-content:space-between; align-items:flex-start; min-height:70px; padding:2px 4px; }
-/* collected completed-run "bunch" (top-left) — each finished K→A run lands here */
+/* collected completed-run "bunch" (top-left) — each finished K→A run lands
+   here as its King card */
 .sp-bunch { position:relative; width:62px; height:66px; }
 .sp-bc { position:absolute; left:8px; top:1px; width:44px; height:62px; border-radius:8px; background:#fbfbfb;
-  box-shadow:0 1px 3px rgba(0,0,0,.55), inset 0 0 0 1px rgba(0,0,0,.06); display:grid; place-items:center;
-  transform-origin:50% 90%; }
-.sp-bc .s { font-size:28px; line-height:1; }
-.sp-bc.red .s { color:#d63a2f; } .sp-bc.navy .s { color:#15294f; }
+  box-shadow:0 1px 3px rgba(0,0,0,.55), inset 0 0 0 1px rgba(0,0,0,.06); overflow:hidden;
+  transform-origin:50% 95%; }
+.sp-bc .r { position:absolute; top:2px; left:4px; font-size:13px; font-weight:800; line-height:1; }
+.sp-bc .p { position:absolute; left:0; right:0; bottom:5px; text-align:center; font-size:26px; line-height:1; }
+.sp-bc.red .r, .sp-bc.red .p { color:#d63a2f; } .sp-bc.navy .r, .sp-bc.navy .p { color:#15294f; }
 .sp-bcount { position:absolute; right:-4px; bottom:-4px; min-width:18px; height:18px; padding:0 4px; border-radius:9px;
   background:var(--accent,#f0a32a); color:#1a1300; font-size:11px; font-weight:800; display:grid; place-items:center;
   box-shadow:0 1px 2px rgba(0,0,0,.5); z-index:9; }
@@ -40,8 +42,12 @@ const STYLE = `
    completed-run clones MUST out-specify it or they fall into body flow and
    strand off-screen. Keep the .sp-card.sp-fly compound selector. */
 .sp-card.sp-fly { position:fixed; z-index:80; border-radius:8px; pointer-events:none; will-change:transform, opacity; margin:0 !important; }
+/* comet-like light smear that follows the run up to the corner */
+.sp-streak { position:fixed; z-index:78; pointer-events:none; will-change:transform, opacity; border-radius:50%;
+  background:linear-gradient(90deg, transparent, rgba(255,225,150,.0) 8%, rgba(255,221,130,.75) 50%, rgba(255,225,150,0) 92%, transparent);
+  filter:blur(3px); transform-origin:50% 50%; }
 .sp-spark { position:fixed; z-index:79; pointer-events:none; will-change:transform, opacity;
-  color:#ffd773; font-size:14px; line-height:1; text-shadow:0 0 6px rgba(255,200,90,.9); }
+  color:#ffe08a; line-height:1; text-shadow:0 0 7px rgba(255,200,80,1), 0 0 3px rgba(255,235,170,1); }
 .sp-stock { position:relative; height:66px; cursor:pointer; }
 .sp-stock.empty { opacity:.25; cursor:default; }
 .sp-stock .sp-back { position:absolute; top:0; width:46px; height:64px; }
@@ -66,14 +72,13 @@ const STYLE = `
 .sp-card.navy .sp-rk, .sp-card.navy .sp-cs, .sp-card.navy .sp-pip { color:#15294f; }
 .sp-card.red .sp-rk, .sp-card.red .sp-cs, .sp-card.red .sp-pip { color:#d63a2f; }
 
-@keyframes sp-drop { from { transform:translateY(-30px); opacity:.2; } to { transform:none; opacity:1; } }
-.sp-anim-deal { animation:sp-drop .22s ease both; }
-@keyframes sp-pop { from { transform:scale(.85); } to { transform:scale(1); } }
-.sp-anim-move { animation:sp-pop .18s ease; }
-@keyframes sp-flip { from { transform:rotateY(90deg); } to { transform:rotateY(0); } }
-/* delay + 'both' fill so the freshly-revealed card stays edge-on (hidden) while
-   the moved card slides off, then flips open after it has cleared */
-.sp-anim-flip { animation:sp-flip .26s ease .22s both; }
+/* flip: the freshly-revealed card holds edge-on (hidden) briefly while the
+   moved card slides off, then flips open with a quick, smooth ease-out */
+@keyframes sp-flip {
+  from { transform:perspective(360px) rotateY(90deg); }
+  to { transform:perspective(360px) rotateY(0); }
+}
+.sp-anim-flip { animation:sp-flip .19s cubic-bezier(.25,.8,.4,1) .1s both; }
 `;
 
 /* ---- winnable-deal solver (1-suit spades modes) ---- */
@@ -171,6 +176,7 @@ export default function init(api) {
 
   let cols, stock, completed, completedRuns, history, won;
   let pendingAnims = [];
+  let dealSet = null; // uids of cards currently being dealt (animated from the stock)
   let generating = false;
   let genToken = 0;
   let winPending = false;
@@ -258,11 +264,16 @@ export default function init(api) {
     won = false;
     winPending = false;
     generating = false;
-    pendingAnims = cols.map((c, j) => ({ j, from: 0, cls: "sp-anim-deal" }));
+    pendingAnims = [];
     dealingEl.style.display = "none";
     pills();
     setFooter();
+    // cascade the whole tableau out of the stock
+    dealSet = new Set();
+    cols.forEach((c) => c.forEach((card) => dealSet.add(String(card.uid))));
     render();
+    animateDeal(14);
+    dealSet = null;
   }
 
   // Only 1-suit (spades) deals can be verified quickly enough to guarantee
@@ -310,14 +321,17 @@ export default function init(api) {
     if (won || generating || !stock.length) return;
     pushHistory();
     pendingAnims = [];
+    dealSet = new Set();
     for (let j = 0; j < COLS && stock.length; j++) {
       const card = stock.pop();
       card.faceUp = true;
       cols[j].push(card);
-      pendingAnims.push({ j, from: cols[j].length - 1, cls: "sp-anim-deal" });
+      dealSet.add(String(card.uid));
     }
     setFooter();
     render();
+    animateDeal(52); // staggered cascade out of the stock, left → right
+    dealSet = null;
     processCompletions();
     checkWin();
   }
@@ -368,10 +382,9 @@ export default function init(api) {
   function move(src, idx, dst) {
     pushHistory();
     const run = cols[src].slice(idx);
-    const destStart = cols[dst].length;
     cols[src].splice(idx);
     cols[dst].push(...run);
-    pendingAnims = [{ j: dst, from: destStart, cls: "sp-anim-move" }];
+    pendingAnims = []; // the run's slide to dst is handled by flipRender
     if (flip(src)) pendingAnims.push({ j: src, from: cols[src].length - 1, only: true, cls: "sp-anim-flip" });
     setFooter();
     render();
@@ -436,9 +449,11 @@ export default function init(api) {
       flyEls.push(cl);
       return { cl, r };
     });
-    // trail origin = the run's lower card (where the fan lifts off)
+    // trail geometry: the run lifts off from its lower card and arcs to the corner
     const last = clones[clones.length - 1].r;
-    const DUR = 520, STAG = 24;
+    const ox = last.left + last.width / 2, oy = last.top + last.height / 2;
+    const DUR = 560, STAG = 26;
+    const span = DUR + clones.length * STAG;
     requestAnimationFrame(() => {
       let done = false;
       const finish = () => {
@@ -451,47 +466,71 @@ export default function init(api) {
       };
       clones.forEach(({ cl, r }, i) => {
         const dx = tcx - (r.left + r.width / 2), dy = tcy - (r.top + r.height / 2);
-        const bow = (i % 2 ? 1 : -1) * (18 + (i % 3) * 10); // sideways bow → arc, not a straight line
-        const rot = (i % 2 ? 1 : -1) * (6 + (i % 4) * 5);
+        // wide readable fan at the midpoint that sweeps up-left, then collapses
+        const spread = (i - (clones.length - 1) / 2); // -6 … +6
+        const midX = dx * 0.46 + spread * 9;
+        const midY = dy * 0.46 - 26 - Math.abs(spread) * 2;
+        const midRot = spread * 7;
+        const endRot = spread * 3;
         if (!cl.animate) { removeFly(cl); return; }
         const a = cl.animate(
           [
-            { transform: "translate(0,0) scale(1) rotate(0deg)", opacity: 1 },
-            { transform: `translate(${dx * 0.5 + bow}px,${dy * 0.5 - 14}px) scale(.92) rotate(${rot / 2}deg)`, opacity: 1, offset: 0.5 },
-            { transform: `translate(${dx}px,${dy}px) scale(.5) rotate(${rot}deg)`, opacity: 0.92 },
+            { transform: "translate(0,0) scale(1) rotate(0deg)", opacity: 1, offset: 0 },
+            { transform: `translate(${midX}px,${midY}px) scale(.95) rotate(${midRot}deg)`, opacity: 1, offset: 0.5 },
+            { transform: `translate(${dx}px,${dy}px) scale(.46) rotate(${endRot}deg)`, opacity: 0.9, offset: 1 },
           ],
-          { duration: DUR, delay: i * STAG, easing: "cubic-bezier(.45,.02,.35,1)", fill: "forwards" }
+          { duration: DUR, delay: i * STAG, easing: "cubic-bezier(.4,.04,.2,1)", fill: "forwards" }
         );
         if (i === clones.length - 1) { a.onfinish = finish; a.oncancel = finish; }
       });
-      spawnSparkles(last.left + last.width / 2, last.top + last.height / 2, tcx, tcy, DUR + clones.length * STAG);
+      spawnStreak(ox, oy, tcx, tcy, span);
+      spawnSparkles(ox, oy, tcx, tcy, span);
       // safety net in case the last animation never fires onfinish
-      setTimeout(finish, DUR + clones.length * STAG + 280);
+      setTimeout(finish, span + 320);
     });
   }
-  // gold stars scattered along the flight path, lighting up source→bunch
+  // a soft comet smear that brightens along the path then fades, selling the sweep
+  function spawnStreak(x0, y0, x1, y1, span) {
+    const len = Math.hypot(x1 - x0, y1 - y0), ang = Math.atan2(y1 - y0, x1 - x0) * 180 / Math.PI;
+    const s = document.createElement("div");
+    s.className = "sp-streak";
+    Object.assign(s.style, {
+      left: (x0 + x1) / 2 - len / 2 + "px", top: (y0 + y1) / 2 - 7 + "px",
+      width: len + "px", height: "14px", transform: `rotate(${ang}deg)`,
+    });
+    document.body.append(s);
+    flyEls.push(s);
+    if (!s.animate) { removeFly(s); return; }
+    const a = s.animate(
+      [{ opacity: 0 }, { opacity: 0.9, offset: 0.45 }, { opacity: 0 }],
+      { duration: span * 0.9, delay: 60, easing: "ease-in-out", fill: "forwards" }
+    );
+    a.onfinish = () => removeFly(s);
+    a.oncancel = () => removeFly(s);
+  }
+  // gold stars twinkling along the flight path, lighting up source→bunch
   function spawnSparkles(x0, y0, x1, y1, span) {
-    const N = 15, glyphs = ["✦", "✧", "⋆", "✦"];
+    const N = 22, glyphs = ["✦", "✧", "⋆", "✦", "·"];
     const nx = -(y1 - y0), ny = x1 - x0, nl = Math.hypot(nx, ny) || 1;
     for (let i = 0; i < N; i++) {
       const f = i / (N - 1);
-      const off = (Math.random() * 2 - 1) * 28;
-      const sx = x0 + (x1 - x0) * f + (nx / nl) * off + (Math.random() * 2 - 1) * 8;
-      const sy = y0 + (y1 - y0) * f + (ny / nl) * off + (Math.random() * 2 - 1) * 8;
+      const off = (Math.random() * 2 - 1) * 34;
+      const sx = x0 + (x1 - x0) * f + (nx / nl) * off + (Math.random() * 2 - 1) * 10;
+      const sy = y0 + (y1 - y0) * f + (ny / nl) * off + (Math.random() * 2 - 1) * 10;
       const s = document.createElement("div");
       s.className = "sp-spark";
       s.textContent = glyphs[i % glyphs.length];
-      s.style.left = sx + "px"; s.style.top = sy + "px"; s.style.fontSize = 10 + Math.random() * 10 + "px";
+      s.style.left = sx + "px"; s.style.top = sy + "px"; s.style.fontSize = 9 + Math.random() * 13 + "px";
       document.body.append(s);
       flyEls.push(s);
       if (!s.animate) { removeFly(s); continue; }
       const a = s.animate(
         [
           { transform: "scale(0) rotate(0deg)", opacity: 0 },
-          { transform: "scale(1.2) rotate(40deg)", opacity: 1, offset: 0.4 },
-          { transform: "scale(.2) rotate(90deg)", opacity: 0 },
+          { transform: "scale(1.25) rotate(35deg)", opacity: 1, offset: 0.4 },
+          { transform: "scale(.15) rotate(80deg)", opacity: 0 },
         ],
-        { duration: 460, delay: 100 + f * (span - 200) + Math.random() * 60, easing: "ease-out", fill: "forwards" }
+        { duration: 480, delay: 80 + f * (span - 160) + Math.random() * 70, easing: "ease-out", fill: "forwards" }
       );
       a.onfinish = () => removeFly(s);
       a.oncancel = () => removeFly(s);
@@ -500,20 +539,26 @@ export default function init(api) {
   function removeFly(cl) { cl.remove(); const i = flyEls.indexOf(cl); if (i >= 0) flyEls.splice(i, 1); }
   function clearFly() { while (flyEls.length) flyEls.pop().remove(); }
   function popBunch() {
-    if (bunchEl.animate) bunchEl.animate([{ transform: "scale(1.22)" }, { transform: "scale(1)" }], { duration: 240, easing: "ease-out" });
+    // springy landing with a tiny overshoot
+    if (bunchEl.animate) bunchEl.animate(
+      [{ transform: "scale(1.3)" }, { transform: "scale(.92)", offset: 0.55 }, { transform: "scale(1)" }],
+      { duration: 320, easing: "cubic-bezier(.3,1.4,.5,1)" }
+    );
   }
 
   function renderBunch() {
     bunchEl.replaceChildren();
-    // runs still flying aren't shown until their cards land (see flyToBunch)
+    // runs still flying aren't shown until their cards land (see flyToBunch);
+    // each completed run is shown as its King card, fanned for multiples
     const n = completedRuns.length - bunchPending;
     const show = Math.min(n, 4);
     for (let i = 0; i < show; i++) {
       const suit = completedRuns[n - show + i];
-      const bc = el("div", "sp-bc " + (suit === 1 || suit === 2 ? "red" : "navy"));
-      bc.style.transform = `rotate(${(i - (show - 1) / 2) * 9}deg)`;
+      const def = SUIT_DEFS[suit];
+      const bc = el("div", "sp-bc " + (def.red ? "red" : "navy"));
+      bc.style.transform = `rotate(${(i - (show - 1) / 2) * 8}deg)`;
       bc.style.zIndex = i;
-      bc.innerHTML = `<span class="s">${SUIT_DEFS[suit].s}</span>`;
+      bc.innerHTML = `<span class="r">K${def.s}</span><span class="p">${def.s}</span>`;
       bunchEl.append(bc);
     }
     if (n > 1) { const c = el("div", "sp-bcount"); c.textContent = n; bunchEl.append(c); }
@@ -572,6 +617,34 @@ export default function init(api) {
   function render() {
     flipRender(colsEl, paint, { origin: stockEl });
   }
+  // fly freshly-dealt cards out of the stock to their slots, staggered L→R so
+  // they cascade in with a small settle (cards in dealSet were marked nofly)
+  function animateDeal(stagger) {
+    if (!dealSet || !dealSet.size) return;
+    const sr = stockEl.getBoundingClientRect();
+    const scx = sr.left + sr.width / 2, scy = sr.top + sr.height / 2;
+    let k = 0;
+    for (let j = 0; j < COLS; j++) {
+      for (const el of colEls[j].children) {
+        if (!dealSet.has(el.dataset.cid) || !el.animate) continue;
+        const r = el.getBoundingClientRect();
+        const fromX = scx - (r.left + r.width / 2), fromY = scy - (r.top + r.height / 2);
+        el.style.zIndex = String(60 + k);
+        const a = el.animate(
+          [
+            { transform: `translate(${fromX}px,${fromY}px) scale(.9)`, opacity: 0 },
+            { opacity: 1, offset: 0.25 },
+            { transform: "translate(0,0) scale(1.05)", offset: 0.82 },
+            { transform: "translate(0,0) scale(1)" },
+          ],
+          { duration: 300, delay: k * stagger, easing: "cubic-bezier(.25,.7,.3,1)", fill: "backwards" }
+        );
+        const clr = () => { el.style.zIndex = ""; };
+        a.onfinish = clr; a.oncancel = clr;
+        k++;
+      }
+    }
+  }
   function paint() {
     renderStock();
     renderBunch();
@@ -585,6 +658,9 @@ export default function init(api) {
         const blocked = card.faceUp && !validRun(cols[j], idx); // can't be picked up
         cardEl.className = "sp-card" + (card.faceUp ? (def.red ? " red" : " navy") : " down") + (blocked ? " blocked" : "");
         cardEl.dataset.cid = card.uid;
+        // cards being dealt are animated by animateDeal, so keep flipRender's
+        // hands off them (don't fly them from the deck a second time)
+        if (dealSet && dealSet.has(String(card.uid))) cardEl.dataset.nofly = "1";
         if (card.faceUp)
           cardEl.innerHTML = `<span class="sp-rk">${RANKS[card.rank - 1]}</span><span class="sp-cs">${def.s}</span><span class="sp-pip">${def.s}</span>`;
         cardEl.addEventListener("click", (ev) => onCard(j, idx, ev));
