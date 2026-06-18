@@ -77,6 +77,10 @@ export default function init(api) {
     el.style.height = tileH - 8 + "px";
     el.style.left = col * colW + 4 + "px";
     el.style.top = "0px";
+    // place it at its real (off-screen, above) position immediately — otherwise
+    // it renders one frame at top:0 before the loop applies the transform, which
+    // flashes a sliver of the tile at the top edge of the board
+    el.style.transform = `translateY(${(scroll - row) * tileH}px)`;
     board.append(el);
     const tile = { row, col, el, hit: false };
     el.__tile = tile;
